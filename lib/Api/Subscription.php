@@ -32,6 +32,22 @@ class Subscription extends Client
 
     /**
      * @param string $subscriptionId The subscription's id
+     * @param $data
+     * @return array
+     * @throws \Exception
+     */
+    public function updateSubscription($subscriptionId, $data)
+    {
+        $response = $this->client->request('PUT', sprintf('subscriptions/%s', $subscriptionId), [
+            'content-type' => 'application/json',
+            'body' => json_encode($data),
+        ]);
+
+        return $this->processResponse($response);
+    }
+
+    /**
+     * @param string $subscriptionId The subscription's id
      * @param array  $data
      *
      * @throws \Exception
