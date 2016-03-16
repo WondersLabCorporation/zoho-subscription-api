@@ -25,12 +25,14 @@ class Customer extends Client
         $hit = $this->getFromCache($cacheKey);
 
         if (false === $hit) {
-            $response = $this->client->request('GET', 'customers', [
+            $response = $this->request('GET', 'customers', [
                 'query' => ['email' => $customerEmail],
             ]);
 
             $result = $this->processResponse($response);
-
+            if ($this->hasError()){
+                return null;
+            }
             $customers = $result['customers'];
 
             $this->saveToCache($cacheKey, $customers);
@@ -66,7 +68,7 @@ class Customer extends Client
         $hit = $this->getFromCache($cacheKey);
 
         if (false === $hit) {
-            $response = $this->client->request('GET', sprintf('customers/%s', $customerId));
+            $response = $this->request('GET', sprintf('customers/%s', $customerId));
             $result = $this->processResponse($response);
 
             $customer = $result['customer'];
@@ -89,13 +91,15 @@ class Customer extends Client
      */
     public function updateCustomer($customerId, $data)
     {
-        $response = $this->client->request('PUT', sprintf('customers/%s', $customerId), [
+        $response = $this->request('PUT', sprintf('customers/%s', $customerId), [
             'content-type' => 'application/json',
             'body' => json_encode($data),
         ]);
 
         $result = $this->processResponse($response);
-
+        if ($this->hasError()){
+            return null;
+        }
         if ($result['code'] == '0') {
             $customer = $result['customer'];
 
@@ -128,13 +132,15 @@ class Customer extends Client
      */
     public function createCustomer($data)
     {
-        $response = $this->client->request('POST', 'customers', [
+        $response = $this->request('POST', 'customers', [
             'content-type' => 'application/json',
             'body' => json_encode($data),
         ]);
 
         $result = $this->processResponse($response);
-
+        if ($this->hasError()){
+            return null;
+        }
         if ($result['code'] == '0') {
             $customer = $result['customer'];
 

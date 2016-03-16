@@ -34,12 +34,17 @@ class Client
     protected $ttl;
 
     /**
+     * @var string
+     */
+    protected $error;
+    
+    /**
      * @param string                            $token
      * @param int                               $organizationId
      * @param \Doctrine\Common\Cache\Cache|null $cache
      * @param int                               $ttl
      */
-    public function __construct($token, $organizationId, Cache $cache, $ttl = 7200)
+    public function __construct($token, $organizationId, Cache $cache = null, $ttl = 7200)
     {
         $this->token = $token;
         $this->organizationId = $organizationId;
@@ -61,14 +66,21 @@ class Client
      *
      * @return array
      */
-    protected function processResponse(Response $response)
+    protected function processResponse(Response $response=null)
     {
-        $data = json_decode($response->getBody(), true);
-
-        if ($data['code'] != 0) {
-            throw new \Exception('Zoho Api subscription error : '.$data['message']);
+        if ($response === null){
+            $this->error = 'Zoho Api subscription error : null data in processResponse';
+            return null;
         }
-
+        if ($response->getStatusCode() > 201){
+            $this->error = 'Zoho Api subscription error : '.$response->getReasonPhrase();
+            return null;
+        }
+        $data = json_decode($response->getBody(), true);
+        if ($data['code'] != 0) {
+            $this->setError('Zoho Api subscription error : '.$data['message']);
+            return null;
+        }
         return $data;
     }
 
@@ -82,7 +94,7 @@ class Client
     public function getFromCache($key)
     {
         // If the results are already cached
-        if ($this->cache->contains($key)) {
+        if ($this->cache and $this->cache->contains($key)) {
             return unserialize($this->cache->fetch($key));
         }
 
@@ -99,6 +111,9 @@ class Client
      */
     public function saveToCache($key, $values)
     {
+        if ($this->cache === null){
+            return true;
+        }
         if (null === $key) {
             throw new \LogicException('If you want to save to cache, an unique key must be set');
         }
@@ -111,6 +126,37 @@ class Client
      */
     public function deleteCacheByKey($key)
     {
+        if ($this->cache === null){
+            return true;
+        }
         $this->cache->delete($key);
+    }
+    
+    /**
+     * @return boolean
+     */
+    public function hasError()
+    {
+        return !empty($this->error);
+    }
+    
+    /**
+     * @return string
+     */
+    public function getError()
+    {
+        return $this->error;
+    }
+   
+    /**
+     * Non exception wrapper for client->request
+     */
+    public function request($method, $uri = null, array $options = [])
+    {
+        try {
+            return $this->client->request($method, $uri, $options);
+        } catch(\Exception $e){
+            $this->error = $e->getMessage();
+        }
     }
 }

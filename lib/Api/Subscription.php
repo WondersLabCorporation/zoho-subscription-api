@@ -22,7 +22,7 @@ class Subscription extends Client
      */
     public function createSubscription($data)
     {
-        $response = $this->client->request('POST', 'subscriptions', [
+        $response = $this->request('POST', 'subscriptions', [
             'content-type' => 'application/json',
             'body' => json_encode($data),
         ]);
@@ -38,7 +38,7 @@ class Subscription extends Client
      */
     public function updateSubscription($subscriptionId, $data)
     {
-        $response = $this->client->request('PUT', sprintf('subscriptions/%s', $subscriptionId), [
+        $response = $this->request('PUT', sprintf('subscriptions/%s', $subscriptionId), [
             'content-type' => 'application/json',
             'body' => json_encode($data),
         ]);
@@ -56,7 +56,7 @@ class Subscription extends Client
      */
     public function buyOneTimeAddonForASubscription($subscriptionId, $data)
     {
-        $response = $this->client->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $subscriptionId), [
+        $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $subscriptionId), [
             'json' => json_encode($data),
         ]);
 
@@ -73,7 +73,7 @@ class Subscription extends Client
      */
     public function associateCouponToASubscription($subscriptionId, $couponCode)
     {
-        $response = $this->client->request('POST', sprintf('subscriptions/%s/coupons/%s', $subscriptionId, $couponCode));
+        $response = $this->request('POST', sprintf('subscriptions/%s/coupons/%s', $subscriptionId, $couponCode));
 
         return $this->processResponse($response);
     }
@@ -87,7 +87,7 @@ class Subscription extends Client
      */
     public function reactivateSubscription($subscriptionId)
     {
-        $response = $this->client->request('POST', sprintf('subscriptions/%s/reactivate', $subscriptionId));
+        $response = $this->request('POST', sprintf('subscriptions/%s/reactivate', $subscriptionId));
 
         return $this->processResponse($response);
     }
@@ -105,10 +105,12 @@ class Subscription extends Client
         $hit = $this->getFromCache($cacheKey);
 
         if (false === $hit) {
-            $response = $this->client->request('GET', sprintf('subscriptions/%s', $subscriptionId));
+            $response = $this->request('GET', sprintf('subscriptions/%s', $subscriptionId));
 
             $result = $this->processResponse($response);
-
+            if ($this->hasError()){
+                return null;
+            }
             $subscription = $result['subscription'];
 
             $this->saveToCache($cacheKey, $subscription);
@@ -132,12 +134,14 @@ class Subscription extends Client
         $hit = $this->getFromCache($cacheKey);
 
         if (false === $hit) {
-            $response = $this->client->request('GET', 'subscriptions', [
+            $response = $this->request('GET', 'subscriptions', [
                 'query' => ['customer_id' => $customerId],
             ]);
 
             $result = $this->processResponse($response);
-
+            if ($this->hasError()){
+                return null;
+            }
             $invoices = $result['subscriptions'];
 
             $this->saveToCache($cacheKey, $invoices);
@@ -146,5 +150,39 @@ class Subscription extends Client
         }
 
         return $hit;
+    }
+    
+    /**
+     *
+     * @return iterator
+     */
+    public function listSubscriptions()
+    {
+        $page = 1;
+        $subscriptions_result = [];
+        do {
+            $response = $this->request('GET', 'subscriptions',[
+                'query' => ['page' => $page],
+            ]);
+
+            $result = $this->processResponse($response);
+            if ($this->hasError()){
+                return null;
+            }
+            $subscriptions = $result['subscriptions'];
+ 
+            foreach ($subscriptions as $value) {
+                $subscriptions_result[] = $value;
+            }
+            
+            if ($result['page_context']['has_more_page']){
+                $page++;
+                $nextPage = $page;
+            } else {
+                $nextPage = false;
+            }
+            
+        } while ($nextPage);
+        return $subscriptions_result;
     }
 }
