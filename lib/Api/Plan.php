@@ -14,6 +14,46 @@ use Zoho\Subscription\Client\Client;
  */
 class Plan extends Client
 {
+    protected $command = 'plans';
+    protected $module = 'plan';
+    
+    protected function getId()
+    {
+        return $this['plan_code'];
+    }
+    
+    protected function setId($id)
+    {
+        $this['plan_code'] = $id;
+    }
+    
+    protected $base_template = [
+        'name',
+        'recurring_price',
+        'interval',
+        'interval_unit',
+        'billing_cycles',
+        'trial_period',
+        'setup_fee',
+        'product_id',
+        'tax_id',
+    ];
+    
+    protected function getCreateTemplate()
+    {
+        return array_merge($this->base_template, [
+            'plan_code',
+        ]);
+    }
+    
+    protected function getUpdateTemplate()
+    {
+        return array_merge($this->base_template, [
+            'end_of_term',
+            'prorate',
+        ]);
+    }
+    
     public static $addonTypes = [
         'recurring',
         'one_time',

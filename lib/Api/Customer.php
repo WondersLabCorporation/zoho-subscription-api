@@ -12,6 +12,57 @@ use Zoho\Subscription\Client\Client;
  */
 class Customer extends Client
 {
+    protected $command = 'customers';
+    protected $module = 'customer';
+
+    protected function beforPrepareData(array &$data)
+    {
+        return;
+    }
+    
+    protected $base_template = [
+        'display_name',
+        'first_name',
+        'last_name',
+        'email',
+        'company_name',
+        'phone',
+        'mobile',
+        'website',
+        'billing_address' => [
+            'street',
+            'city',
+            'price',
+            'state',
+            'zip',
+            'country',
+            'fax',
+        ],
+        'shipping_address' => [
+            'street',
+            'city',
+            'price',
+            'state',
+            'zip',
+            'country',
+            'fax',
+        ],
+        'currency_code',
+        'ach_supported',
+        'notes',
+        'custom_fields',
+    ];
+    
+    protected function getCreateTemplate()
+    {
+        return $this->base_template;
+    }
+    
+    protected function getUpdateTemplate()
+    {
+        return $this->base_template;
+    }
+    
     /**
      * @param string $customerEmail The customer's email
      *
@@ -140,7 +191,7 @@ class Customer extends Client
         $result = $this->processResponse($response);
         if ($this->hasError()){
             return null;
-        }
+}
         if ($result['code'] == '0') {
             $customer = $result['customer'];
 

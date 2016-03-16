@@ -6,7 +6,7 @@ use Doctrine\Common\Cache\Cache;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response;
 
-class Client
+abstract class Client implements \ArrayAccess
 {
     /**
      * @var String
@@ -37,6 +37,16 @@ class Client
      * @var string
      */
     protected $error;
+
+    /**
+     * @var string
+     */
+    protected $warnings;
+    
+    /**
+     * @var array 
+     */
+    protected $container;
     
     /**
      * @param string                            $token
@@ -46,6 +56,7 @@ class Client
      */
     public function __construct($token, $organizationId, Cache $cache = null, $ttl = 7200)
     {
+        $this->warnings = [];
         $this->token = $token;
         $this->organizationId = $organizationId;
         $this->ttl = $ttl;
@@ -91,7 +102,7 @@ class Client
      *
      * @return bool|mixed
      */
-    public function getFromCache($key)
+    protected function getFromCache($key)
     {
         // If the results are already cached
         if ($this->cache and $this->cache->contains($key)) {
@@ -109,7 +120,7 @@ class Client
      *
      * @return bool
      */
-    public function saveToCache($key, $values)
+    protected function saveToCache($key, $values)
     {
         if ($this->cache === null){
             return true;
@@ -124,7 +135,7 @@ class Client
     /**
      * @param string $key
      */
-    public function deleteCacheByKey($key)
+    protected function deleteCacheByKey($key)
     {
         if ($this->cache === null){
             return true;
@@ -147,16 +158,167 @@ class Client
     {
         return $this->error;
     }
-   
+    
+    /**
+     * @return array
+     */
+    public function getWarnings()
+    {
+        return $this->warnings;
+    }
+    
+    public function setUserDefinedData($data)
+    {
+        $this->container[$this->module] = $data;
+    }
+    
+    public function load($id = null)
+    {
+        if ($id !== null){
+            $this->setId($id);
+        }
+        $response = $this->request('GET', $this->getCommandRetrieve(), [
+                'content-type' => 'application/json',
+            ]);
+        $data = $this->processResponse($response);
+        if ($this->hasError()){
+            return null;
+        }
+        $this->container = $data;
+        return $this;
+    }
+    
+    public function save(array $template = null){
+        $this->error = null;
+        $data = $this->container[$this->module];
+        $this->beforPrepareData($data);
+        $data = $this->prepareData($data, $template);
+        $response = $this->internalSave($data);
+        if ($this->hasError()){
+            return null;
+        }
+        $this->container = $response;
+        return $this;
+    }
+
+    protected function internalsave(array $data)
+    {
+        if ($this->getId() === null){
+            $data = $this->prepareData($data, $this->getCreateTemplate());
+            $response = $this->request('POST', $this->getCommandCreate(), [
+                'content-type' => 'application/json',
+                'body' => json_encode($data),
+            ]);
+        } else {
+            $data = $this->prepareData($data, $this->getUpdateTemplate());
+            $response = $this->request($this->getUpdateMethod(), $this->getCommandUpdate(), [
+                'content-type' => 'application/json',
+                'body' => json_encode($data),
+            ]);
+        }
+        return $this->processResponse($response);
+    }
+    
+    protected function beforPrepareData(&$data)
+    {
+        return;
+    }
+    
+    protected function prepareData(array $data, array $template=null)
+    {
+        if ($template === null){
+            return $data;
+        }
+        $result = [];
+        foreach ($template as $key => $value){
+            if (is_array($value)){
+                if (array_key_exists($key, $data)){
+                    $result[$key] = $this->prepareData($data[$key], $value);
+                } elseif ($key == '*'){
+                    foreach ($data as $rowKey => $rowValue) {
+                        $result[$rowKey] = $this->prepareData($rowValue, $value);
+                    }
+                }
+            } elseif (array_key_exists($value, $data)){
+                $result[$value] = $data[$value];
+            }
+        }
+        return $result;
+    }
+    
+    protected function getUpdateMethod()
+    {
+        return 'PUT';
+    }
+    
+    protected function getCommandCreate()
+    {
+        return $this->command;
+    }
+    
+    protected function getCommandUpdate()
+    {
+        return $this->command.'/'.$this->getId();
+    }
+    
+    protected function getCommandRetrieve()
+    {
+        return $this->command.'/'.$this->getId();
+    }
+    
+    protected function getId()
+    {
+        return $this[$this->module.'_id'];
+    }
+    
+    protected function setId($id)
+    {
+        $this[$this->module.'_id'] = $id;
+    }
+    
+    abstract protected function getCreateTemplate();
+    
+    abstract protected function getUpdateTemplate();
+    
     /**
      * Non exception wrapper for client->request
      */
-    public function request($method, $uri = null, array $options = [])
+    protected function request($method, $uri = null, array $options = [])
     {
         try {
             return $this->client->request($method, $uri, $options);
         } catch(\Exception $e){
             $this->error = $e->getMessage();
+        }
+    }
+    
+    public function offsetSet($offset, $value) {
+        if (is_null($offset)) {
+            $this->container[] = $value;
+        } else {
+            if (!isset($this->container[$this->module])){
+                $this->container[$this->module] = [];
+            }
+            $this->container[$this->module][$offset] = $value;
+        }
+    }
+
+    public function offsetExists($offset) {
+        return isset($this->container[$offset]);
+    }
+
+    public function offsetUnset($offset) {
+        unset($this->container[$offset]);
+    }
+
+    public function &offsetGet($offset) {
+        if (isset($this->container[$this->module], $this->container[$this->module][$offset])){
+            return $this->container[$this->module][$offset];
+        } elseif (isset($this->container[$offset])){
+            return $this->container[$offset];
+        } else {
+            $null = null;
+            return $null;
         }
     }
 }
