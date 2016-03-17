@@ -6,6 +6,7 @@ use yii\base\InvalidConfigException;
 use Doctrine\Common\Cache\Cache;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response;
+use \Zoho\Subscription\Api\SubscriptionException;
 
 class Client implements \ArrayAccess
 {
@@ -82,20 +83,17 @@ class Client implements \ArrayAccess
     protected function processResponse(Response $response=null)
     {
         if ($this->hasError()){
-            return null;
+            throw new SubscriptionException($this->error);
         }
         if ($response === null){
-            $this->error = 'Zoho Api subscription error : null data in processResponse';
-            return null;
+            throw new SubscriptionException('Zoho Api subscription error : null data in processResponse');
         }
         if ($response->getStatusCode() > 201){
-            $this->error = 'Zoho Api subscription error : '.$response->getReasonPhrase();
-            return null;
+            throw new SubscriptionException('Zoho Api subscription error : '.$response->getReasonPhrase());
         }
         $data = json_decode($response->getBody(), true);
         if ($data['code'] != 0) {
-            $this->setError('Zoho Api subscription error : '.$data['message']);
-            return null;
+            throw new SubscriptionException('Zoho Api subscription error : '.$data['message']);
         }
         return $data;
     }
@@ -107,9 +105,6 @@ class Client implements \ArrayAccess
     protected function processResponseAndSave(Response $response=null)
     {
         $data = $this->processResponse($response);
-        if ($this->hasError()){
-            return null;
-        }
         $this->container = $data;
     }
 
@@ -190,6 +185,12 @@ class Client implements \ArrayAccess
         $this->container[$this->module] = $data;
     }
     
+    /**
+     * 
+     * @param string|int $id
+     * @return \Zoho\Subscription\Client\Client
+     * @throws SubscriptionException
+     */
     public function load($id = null)
     {
         if ($id !== null){
@@ -199,22 +200,22 @@ class Client implements \ArrayAccess
                 'content-type' => 'application/json',
             ]);
         $data = $this->processResponse($response);
-        if ($this->hasError()){
-            return null;
-        }
         $this->container = $data;
         return $this;
     }
     
+    /**
+     * 
+     * @param array $template
+     * @return \Zoho\Subscription\Client\Client
+     * @throws SubscriptionException
+     */
     public function save(array $template = null){
         $this->error = null;
         $data = $this->container[$this->module];
         $this->beforPrepareData($data);
         $data = $this->prepareData($data, $template);
         $response = $this->internalSave($data);
-        if ($this->hasError()){
-            return null;
-        }
         $this->container = $response;
         return $this;
     }
@@ -268,6 +269,46 @@ class Client implements \ArrayAccess
                 $result[$value] = $data[$value];
             }
         }
+        return $result;
+    }
+    
+    public function getListPage($query, $page)
+    {
+        $cacheKey = sprintf('zoho_%s_%s', $this->command, $page);
+        
+        $hit = $this->getFromCache($cacheKey);
+        
+        if ($hit === false){
+            $response = $this->request('GET', $this->command,[
+                'query' => ($query + ['page' => $page]),
+            ]);
+            
+            $result = $this->processResponse($response);
+            
+            $this->saveToCache($cacheKey, $result);
+            
+            return $result;
+        }
+        
+        return $hit;
+    }
+    
+    public function getList($query = []){
+        $page = 1;
+        $result = [];
+        do {
+            $page_data = $this->getListPage($query, $page);
+            
+            $result = array_merge($result, $page_data[$this->command]);
+            
+            if ($page_data['page_context']['has_more_page']){
+                $page++;
+                $nextPage = $page;
+            } else {
+                $nextPage = false;
+            }
+        } while($nextPage);
+        
         return $result;
     }
     

@@ -118,10 +118,10 @@ class Customer extends Client
 
             return $customer;
         }
-
+        
         return $hit;
     }
-
+    
     /**
      * @param array $customer
      */

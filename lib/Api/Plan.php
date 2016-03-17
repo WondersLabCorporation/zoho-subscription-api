@@ -59,122 +59,44 @@ class Plan extends Client
         'one_time',
     ];
 
-    
-    public function getList() {
-        $page = 1;
-        $plans = [];
-        do {
-            $response = $this->request('GET', 'plans',[
-                'query' => ['page' => $page],
-            ]);
-
-            $result = $this->processResponse($response);
-            if ($this->hasError()){
-                return null;
-            }
-            
-            foreach ($result['plans'] as $value) {
-                $plan = self::createEntity('Plan', $this, [$this->cache, $this->ttl]);
-                $plans[] = $value;
-                array_push($plans, $plan);
-            }
-
-            if ($result['page_context']['has_more_page']){
-                $page++;
-                $nextPage = $page;
-            } else {
-                $nextPage = false;
-            }
-            
-        } while ($nextPage);
-        return $plans;
-    }
-    
     /**
-     * Returns all plans.
-     *
-     * @param array $filters associative array of filters
-     *
-     * @throws \Exception
-     *
+     * Returns all plans as objects.
+     * 
      * @return array
+     * @throws SubscriptionException
      */
-    public function listPlans($filters = [], $withAddons = true, $addonType = null)
-    {
-        $cacheKey = 'plans';
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->request('GET', 'plans');
-            if ($this->hasError()){
-                return null;
-            }
-            $plans = $this->processResponse($response);
-            $hit = $plans['plans'];
-
-            $this->saveToCache($cacheKey, $hit);
+    public function getList() {
+        $result = parent::getList();
+        $plans = [];
+        foreach ($result as $value) {
+            $plan = self::createEntity('Plan', $this, [$this->cache, $this->ttl]);
+            $plans[] = $value;
+            array_push($plans, $plan);
         }
-
-        $hit = $this->filterPlans($hit, $filters);
-
-        if ($withAddons) {
-            $hit = $this->getAddonsForPlan($hit, $addonType);
-        }
-
-        return $hit;
+        return $plans;
     }
 
     /**
      * get reccurent addons for given plan.
      *
-     * @param array  $plans
-     * @param string $addonType
-     *
      * @return array
+     * @throws SubscriptionException
      */
-    public function getAddonsForPlan($plans, $addonType)
+    public function getAddons()
     {
-        $addonApi = new Addon($this->token, $this->organizationId, $this->cache, $this->ttl);
-
-        foreach ($plans as &$plan) {
-            $addons = [];
-
-            foreach ($plan['addons'] as $planAddon) {
-                $addon = $addonApi->getAddon($planAddon['addon_code']);
-
-                if (null !== $addonType) {
-                    if (($addon['type'] == $addonType) && (in_array($addonType, self::$addonTypes))) {
-                        $addons[] = $addon;
-                    }
-                } else {
+        $addonApi = self::createEntity('Addon', $this, [$this->cache, $this->ttl]);
+        $result = $addonApi->getList();
+        $addons = [];
+        foreach ($result as $value) {
+            foreach ($value['plans'] as $plan) {
+                if ($plan['plan_code'] == $this['plan_code']){
+                    $addon = self::createEntity('Addon', $this, [$this->cache, $this->ttl]);
+                    $addon[] = $result;
                     $addons[] = $addon;
+                    break;
                 }
             }
-
-            $plan['addons'] = $addons;
         }
-
-        return $plans;
-    }
-
-    /**
-     * filter given plans with given filters.
-     *
-     * @param array $plans
-     * @param array $filters
-     *
-     * @return array
-     */
-    public function filterPlans($plans, $filters)
-    {
-        foreach ($filters as $key => $filter) {
-            if (array_key_exists($key, current($plans))) {
-                $plans = array_filter($plans, function ($element) use ($key, $filter) {
-                    return $element[$key] == $filter;
-                });
-            }
-        }
-
-        return $plans;
+        return $addons;
     }
 }

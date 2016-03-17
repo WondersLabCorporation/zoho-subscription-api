@@ -130,6 +130,7 @@ class Subscription extends Client
      * @param float $tax_id Optional
      * @param float $exchange_rate Optional
      * @return boolean
+     * @throws SubscriptionException
      */
     public function buyOneTimeAddon($addon_code, $quantity = null, $price = null, $tax_id = null, $exchange_rate = null)
     {
@@ -201,6 +202,7 @@ class Subscription extends Client
      * @param string $customer_id The customer's id
      *
      * @return array Array of Subscription objects
+     * @throws SubscriptionException
      */
     public function getListByCustomer($customer_id = null)
     {
@@ -216,17 +218,12 @@ class Subscription extends Client
             $response = $this->request('GET', 'subscriptions',[
                 'query' => ['customer_id' => $customer_id, 'page' => $page],
             ]);
-
             $result = $this->processResponse($response);
-            if ($this->hasError()){
-                return null;
-            }
             foreach ($result['subscriptions'] as $value) {
                 $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
                 $subscription[] = $value;
                 array_push($subscriptions, $subscription);
             }
-
             if ($result['page_context']['has_more_page']){
                 $page++;
                 $nextPage = $page;
@@ -242,39 +239,18 @@ class Subscription extends Client
      * @param string $customer_id The customer's id
      * 
      * @return array Array of Subscription objects
+     * @throws SubscriptionException
      */
     public function getList($customer_id = null)
     {
-        $page = 1;
+        $query = is_null($customer_id) ? ['customer_id' => $customer_id] : [];
+        $result = parent::getList($query);
         $subscriptions = [];
-        $query = [];
-        if ($customer_id !== null){
-            $query += ['customer_id' => $customer_id];
+        foreach ($result as $value) {
+            $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
+            $subscription[] = $value;
+            array_push($subscriptions, $subscription);
         }
-        do {
-            $response = $this->request('GET', 'subscriptions',[
-                'query' => ($query + ['page' => $page]),
-            ]);
-
-            $result = $this->processResponse($response);
-            if ($this->hasError()){
-                return null;
-            }
-            
-            foreach ($result['subscriptions'] as $value) {
-                $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
-                $subscription[] = $value;
-                array_push($subscriptions, $subscription);
-            }
-
-            if ($result['page_context']['has_more_page']){
-                $page++;
-                $nextPage = $page;
-            } else {
-                $nextPage = false;
-            }
-            
-        } while ($nextPage);
         return $subscriptions;
     }
 }
