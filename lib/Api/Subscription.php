@@ -121,135 +121,112 @@ class Subscription extends Client
         ]);
     }
     
-     /**
-     * @param array $data
-     *
-     * @throws \Exception
-     *
-     * @return string
-     */
-    public function createSubscription($data)
-    {
-        $response = $this->request('POST', 'subscriptions', [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-
-        return $this->processResponse($response);
-    }
-
     /**
-     * @param string $subscriptionId The subscription's id
-     * @param $data
-     * @return array
-     * @throws \Exception
+     * Include a one-time addon in the subscription.
+     * 
+     * @param string $addon_code Required
+     * @param integer $quantity Optional
+     * @param float $price Optional
+     * @param float $tax_id Optional
+     * @param float $exchange_rate Optional
+     * @return boolean
      */
-    public function updateSubscription($subscriptionId, $data)
+    public function buyOneTimeAddon($addon_code, $quantity = null, $price = null, $tax_id = null, $exchange_rate = null)
     {
-        $response = $this->request('PUT', sprintf('subscriptions/%s', $subscriptionId), [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-
-        return $this->processResponse($response);
-    }
-
-    /**
-     * @param string $subscriptionId The subscription's id
-     * @param array  $data
-     *
-     * @throws \Exception
-     *
-     * @return string
-     */
-    public function buyOneTimeAddonForASubscription($subscriptionId, $data)
-    {
-        $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $subscriptionId), [
-            'json' => json_encode($data),
-        ]);
-
-        return $this->processResponse($response);
-    }
-
-    /**
-     * @param string $subscriptionId The subscription's id
-     * @param string $couponCode     The coupon's code
-     *
-     * @throws \Exception
-     *
-     * @return array
-     */
-    public function associateCouponToASubscription($subscriptionId, $couponCode)
-    {
-        $response = $this->request('POST', sprintf('subscriptions/%s/coupons/%s', $subscriptionId, $couponCode));
-
-        return $this->processResponse($response);
-    }
-
-    /**
-     * @param string $subscriptionId The subscription's id
-     *
-     * @return string
-     */
-    public function reactivateSubscription($subscriptionId)
-    {
-        $response = $this->request('POST', sprintf('subscriptions/%s/reactivate', $subscriptionId));
-
-        return $this->processResponse($response);
-    }
-
-    /**
-     * @param string $customerId The customer's id
-     *
-     * @return array
-     */
-    public function listSubscriptionsByCustomer($customerId)
-    {
-        $cacheKey = sprintf('zoho_subscriptions_%s', $customerId);
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->request('GET', 'subscriptions', [
-                'query' => ['customer_id' => $customerId],
-            ]);
-
-            $result = $this->processResponse($response);
-            if ($this->hasError()){
-                return null;
-            }
-            $invoices = $result['subscriptions'];
-
-            $this->saveToCache($cacheKey, $invoices);
-
-            return $invoices;
+        
+        $addon = ['addon_code' => $addon_code];
+        if ($quantity !== null){
+            $addon['quantity'] = $quantity;
         }
+        if ($price !== null){
+            $addon['price'] = $price;
+        }
+        if ($tax_id !== null){
+            $addon['tax_id'] = $tax_id;
+        }
+        $request_data = ['addons' => [
+                $addon,
+            ],
+        ];
+        if ($exchange_rate !== null){
+            $request_data['exchange_rate'] = $exchange_rate;
+        }
+        $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), [
+            'json' => json_encode($request_data),
+        ]);
+        $this->processResponseAndSave($response);
+    }
 
-        return $hit;
+    /**
+     * Include a one-time addons in the subscription.
+     * 
+     * @param array $addons ['addon_code' (required), 'quantity' (optional), 'price' (optional), 'tax_id' (optional)]
+     * @param float $exchange_rate Oprional
+     * @return boolean
+     */
+    public function buyOneTimeAddons(array $addons, $exchange_rate = null)
+    {
+        $template = [
+            'addon_code',
+            'quantity',
+            'price',
+            'tax_id',
+        ];
+        $request_data = ['addons' => []];
+        foreach ($addons as $value) {
+            $request_data['addons'][] = $this->prepareData($value, $template);
+        }
+        if ($exchange_rate !== null){
+            $request_data['exchange_rate'] = $exchange_rate;
+        }
+        $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), [
+            'json' => json_encode($request_data),
+        ]);
+        $this->processResponseAndSave($response);
     }
     
     /**
-     *
-     * @return iterator
+     * Apply a coupon to a subscription which has been already created.
+     * 
+     * @param string $coupon_code
+     * @return null
      */
-    public function listSubscriptions()
+    public function associateCoupon($coupon_code)
     {
+        $response = $this->request('POST', sprintf('subscriptions/%s/coupons/%s', $this->getId(), $coupon_code));
+        $this->processResponseAndSave($response);
+    }
+
+    /**
+     * @param string $customer_id The customer's id
+     *
+     * @return array Array of Subscription objects
+     */
+    public function getListByCustomer($customer_id = null)
+    {
+        if ($customer_id === null){
+            $customer_id = $this['customer']['customer_id'];
+        }
+        if ($customer_id === null){
+            return null;
+        }
         $page = 1;
-        $subscriptions_result = [];
+        $subscriptions = [];
         do {
             $response = $this->request('GET', 'subscriptions',[
-                'query' => ['page' => $page],
+                'query' => ['customer_id' => $customer_id, 'page' => $page],
             ]);
 
             $result = $this->processResponse($response);
             if ($this->hasError()){
                 return null;
             }
-            $subscriptions = $result['subscriptions'];
-
-            foreach ($subscriptions as $value) {
-                $subscriptions_result[] = $value;
+            foreach ($result['subscriptions'] as $value) {
+                $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
+                $subscription[] = $value;
+                array_push($subscriptions, $subscription);
             }
-            
+
             if ($result['page_context']['has_more_page']){
                 $page++;
                 $nextPage = $page;
@@ -258,6 +235,46 @@ class Subscription extends Client
             }
             
         } while ($nextPage);
-        return $subscriptions_result;
+        return $subscriptions;
+    }
+    
+    /**
+     * @param string $customer_id The customer's id
+     * 
+     * @return array Array of Subscription objects
+     */
+    public function getList($customer_id = null)
+    {
+        $page = 1;
+        $subscriptions = [];
+        $query = [];
+        if ($customer_id !== null){
+            $query += ['customer_id' => $customer_id];
+        }
+        do {
+            $response = $this->request('GET', 'subscriptions',[
+                'query' => ($query + ['page' => $page]),
+            ]);
+
+            $result = $this->processResponse($response);
+            if ($this->hasError()){
+                return null;
+            }
+            
+            foreach ($result['subscriptions'] as $value) {
+                $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
+                $subscription[] = $value;
+                array_push($subscriptions, $subscription);
+            }
+
+            if ($result['page_context']['has_more_page']){
+                $page++;
+                $nextPage = $page;
+            } else {
+                $nextPage = false;
+            }
+            
+        } while ($nextPage);
+        return $subscriptions;
     }
 }

@@ -53,16 +53,6 @@ class Customer extends Client
         'custom_fields',
     ];
     
-    protected function getCreateTemplate()
-    {
-        return $this->base_template;
-    }
-    
-    protected function getUpdateTemplate()
-    {
-        return $this->base_template;
-    }
-    
     /**
      * @param string $customerEmail The customer's email
      *
@@ -133,36 +123,6 @@ class Customer extends Client
     }
 
     /**
-     * @param string $customerId The customer's id
-     * @param array  $data
-     *
-     * @throws \Exception
-     *
-     * @return array|bool
-     */
-    public function updateCustomer($customerId, $data)
-    {
-        $response = $this->request('PUT', sprintf('customers/%s', $customerId), [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-
-        $result = $this->processResponse($response);
-        if ($this->hasError()){
-            return null;
-        }
-        if ($result['code'] == '0') {
-            $customer = $result['customer'];
-
-            $this->deleteCustomerCache($customer);
-
-            return $customer;
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * @param array $customer
      */
     private function deleteCustomerCache($customer)
@@ -172,32 +132,5 @@ class Customer extends Client
 
         $cacheKey = sprintf('zoho_customer_%s', md5($customer['email']));
         $this->deleteCacheByKey($cacheKey);
-    }
-
-    /**
-     * @param array $data
-     *
-     * @throws \Exception
-     *
-     * @return array|bool
-     */
-    public function createCustomer($data)
-    {
-        $response = $this->request('POST', 'customers', [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-
-        $result = $this->processResponse($response);
-        if ($this->hasError()){
-            return null;
-}
-        if ($result['code'] == '0') {
-            $customer = $result['customer'];
-
-            return $customer;
-        } else {
-            return false;
-        }
     }
 }

@@ -59,6 +59,37 @@ class Plan extends Client
         'one_time',
     ];
 
+    
+    public function getList() {
+        $page = 1;
+        $plans = [];
+        do {
+            $response = $this->request('GET', 'plans',[
+                'query' => ['page' => $page],
+            ]);
+
+            $result = $this->processResponse($response);
+            if ($this->hasError()){
+                return null;
+            }
+            
+            foreach ($result['plans'] as $value) {
+                $plan = self::createEntity('Plan', $this, [$this->cache, $this->ttl]);
+                $plans[] = $value;
+                array_push($plans, $plan);
+            }
+
+            if ($result['page_context']['has_more_page']){
+                $page++;
+                $nextPage = $page;
+            } else {
+                $nextPage = false;
+            }
+            
+        } while ($nextPage);
+        return $plans;
+    }
+    
     /**
      * Returns all plans.
      *
@@ -88,37 +119,6 @@ class Plan extends Client
 
         if ($withAddons) {
             $hit = $this->getAddonsForPlan($hit, $addonType);
-        }
-
-        return $hit;
-    }
-
-    /**
-     * Returns a Plan by its identifier.
-     *
-     * @param int $planCode
-     *
-     * @throws \Exception
-     *
-     * @return array
-     */
-    public function getPlan($planCode)
-    {
-        $cacheKey = sprintf('plan_%s', $planCode);
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->request('GET', sprintf('plans/%s', $planCode));
-
-            $data = $this->processResponse($response);
-            if ($this->hasError()){
-                return null;
-            }
-            $plan = $data['plan'];
-
-            $this->saveToCache($cacheKey, $plan);
-
-            return $plan;
         }
 
         return $hit;

@@ -16,16 +16,6 @@ class Invoice extends Client
     protected $module = 'invoice';
     protected $base_template = null;
     
-    protected function getCreateTemplate()
-    {
-        return $this->base_template;
-    }
-    
-    protected function getUpdateTemplate()
-    {
-        return $this->base_template;
-    }
-    
     /**
      * @param string $customerId The customer's id
      *

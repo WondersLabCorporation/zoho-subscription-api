@@ -58,11 +58,6 @@ class Addon extends Client
         ]);
     }
     
-    protected function getUpdateTemplate()
-    {
-        return $this->base_template;
-    }
-    
     /**
      * @param array $filters associative array of filters
      *

@@ -2,16 +2,17 @@
 
 namespace Zoho\Subscription\Client;
 
+use yii\base\InvalidConfigException;
 use Doctrine\Common\Cache\Cache;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response;
 
-abstract class Client implements \ArrayAccess
+class Client implements \ArrayAccess
 {
     /**
      * @var String
      */
-    protected $token;
+    protected $subscriptionsToken;
 
     /**
      * @var String
@@ -56,8 +57,11 @@ abstract class Client implements \ArrayAccess
      */
     public function __construct($token, $organizationId, Cache $cache = null, $ttl = 7200)
     {
+        if ($token === null or $organizationId === null){
+            throw new \Exception('Token and Organization ID must not be null values');
+        }
         $this->warnings = [];
-        $this->token = $token;
+        $this->subscriptionsToken = $token;
         $this->organizationId = $organizationId;
         $this->ttl = $ttl;
         $this->cache = $cache;
@@ -73,12 +77,13 @@ abstract class Client implements \ArrayAccess
     /**
      * @param Response $response
      *
-     * @throws \Exception
-     *
      * @return array
      */
     protected function processResponse(Response $response=null)
     {
+        if ($this->hasError()){
+            return null;
+        }
         if ($response === null){
             $this->error = 'Zoho Api subscription error : null data in processResponse';
             return null;
@@ -93,6 +98,19 @@ abstract class Client implements \ArrayAccess
             return null;
         }
         return $data;
+    }
+    
+    /**
+     * @param Response $response
+     * @return null
+     */
+    protected function processResponseAndSave(Response $response=null)
+    {
+        $data = $this->processResponse($response);
+        if ($this->hasError()){
+            return null;
+        }
+        $this->container = $data;
     }
 
     /**
@@ -224,6 +242,13 @@ abstract class Client implements \ArrayAccess
         return;
     }
     
+    /**
+     * Return the only data that complies to template
+     * 
+     * @param array $data
+     * @param array $template
+     * @return array
+     */
     protected function prepareData(array $data, array $template=null)
     {
         if ($template === null){
@@ -239,7 +264,7 @@ abstract class Client implements \ArrayAccess
                         $result[$rowKey] = $this->prepareData($rowValue, $value);
                     }
                 }
-            } elseif (array_key_exists($value, $data)){
+            } elseif (array_key_exists($value, $data) and !empty($data[$value])){
                 $result[$value] = $data[$value];
             }
         }
@@ -276,12 +301,89 @@ abstract class Client implements \ArrayAccess
         $this[$this->module.'_id'] = $id;
     }
     
-    abstract protected function getCreateTemplate();
+    protected function getCreateTemplate()
+    {
+        return $this->base_template;
+    }
     
-    abstract protected function getUpdateTemplate();
+    protected function getUpdateTemplate()
+    {
+        return $this->base_template;
+    }
     
     /**
-     * Non exception wrapper for client->request
+     * Create and load class with a given arguments
+     * 
+     * Class name
+     * @param string $entity
+     * Args to extract into __cuonstruct method
+     * @param Zoho $zoho
+     * @param mixed $id
+     * @param array $params
+     * @return Client
+     * @throws UnknownEntityException
+     */
+    public static function getEntity($entity, $zoho, $params = [])
+    {
+        $id = array_shift($params);
+        $entityItem = static::createEntity($entity, $zoho, $params);
+        $entityItem->error = [];
+        $entityItem->load($id);
+        return $entityItem;
+    }
+    
+    /**
+     * Create a class with a given arguments.
+     * 
+     * Class name
+     * @param string $entity
+     * Args to extract into __cuonstruct method
+     * @param Zoho $zoho
+     * @return Client
+     * @throws UnknownEntityException
+     */
+    public static function createEntity($entity, $zoho, $params = [])
+    {
+        if ($zoho->subscriptionsToken === null){
+            throw new InvalidConfigException('Subscription auth token param is required');
+        }
+        if ($zoho->organizationId === null){
+            throw new InvalidConfigException('Organization id param is required');
+        }
+        $params = array_merge([$zoho->subscriptionsToken, $zoho->organizationId], $params);
+        $classReflection = static::getClassReflection($entity, true);
+        return $classReflection->newInstanceArgs($params);
+    }
+    
+    /**
+     * 
+     * @param string $entity
+     * @param boolean $throwException
+     * @return \ReflectionClass
+     * @throws UnknownEntityException
+     */
+    public static function getClassReflection($entity, $throwException = false)
+    {
+        $fullClassName = 'Zoho\Subscription\Api\\' . $entity;
+        try {
+            $classReflection = new \ReflectionClass($fullClassName);
+        } catch (\ReflectionException $e) {
+            if ($throwException) {
+                throw new UnknownEntityException('No such entity found');
+            } else {
+                return null;
+            }
+        }
+        return $classReflection;
+    }
+    
+    /**
+     * Non exception wrapper for Guzzle client
+     * 
+     * @param string $method
+     * @param string $uri
+     * @param array $options
+     * @return Response
      */
     protected function request($method, $uri = null, array $options = [])
     {
@@ -294,7 +396,7 @@ abstract class Client implements \ArrayAccess
     
     public function offsetSet($offset, $value) {
         if (is_null($offset)) {
-            $this->container[] = $value;
+            $this->container[$this->module] = $value;
         } else {
             if (!isset($this->container[$this->module])){
                 $this->container[$this->module] = [];

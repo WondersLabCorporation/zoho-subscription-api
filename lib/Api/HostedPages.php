@@ -115,37 +115,97 @@ class HostedPages extends Client
         return $this->command.'/'.$this['hostedpage_id'];
     }
     
+
     /**
      * Create hosted page for updating card information for a subscription.
      * 
-     * @param array $data
-     *
-     * @return string
+     * @param string $subscription_id Required
+     * @param string $additional_param Optional
+     * @param string $redirect_url Optional
+     * @return null
      */
-    public function updateCard($data)
+    public function updateCard($subscription_id, $additional_param = null, $redirect_url = null)
     {
+        $data = ['subscription_id' => $subscription_id];
+        if ($additional_param !== null){
+            $data['additional_param'] = $additional_param;
+        }
+        if ($redirect_url){
+            $data['redirect_url'] = $redirect_url;
+        }
         $response = $this->request('POST', 'hostedpages/updatecard', [
             'content-type' => 'application/json',
             'body' => json_encode($data),
         ]);
+        $this->processResponseAndSave($response);
+    }
 
-        return $this->processResponse($response);
+    /**
+     * Create hosted page for buying a one-time addon for a subscription.
+     * 
+     * @param iteger $subscription_id Required
+     * @param string $addon_code Required
+     * @param integer $quantity Optional
+     * @param float $price Optional
+     * @param string $additional_param Optional
+     * @param string $redirect_url Optional
+     * @return null
+     */
+    public function onetimeAddon($subscription_id, $addon_code, $quantity = null, $price = null, $additional_param = null, $redirect_url = null)
+    {
+        $data = ['subscription_id' => $subscription_id];
+        $addon = ['addon_code' => $addon_code];
+        if ($quantity !== null){
+            $addon['quantity'] = $quantity;
+        }
+        if ($price !== null){
+            $addon['price'] = $price;
+        }
+        $data['addons'] = [$addon,];
+        if ($additional_param !== null){
+            $data['additional_param'] = $additional_param;
+        }
+        if ($redirect_url){
+            $data['redirect_url'] = $redirect_url;
+        }
+        $response = $this->request('POST', 'hostedpages/buyonetimeaddon', [
+            'content-type' => 'application/json',
+            'body' => json_encode($data),
+        ]);
+        $this->processResponseAndSave($response);
     }
     
     /**
      * Create hosted page for buying a one-time addon for a subscription.
      * 
-     * @param array $data
-     *
-     * @return string
+     * @param integer $subscription_id
+     * @param array $addons
+     * @param string $additional_param
+     * @param string $redirect_url
+     * @return null
      */
-    public function onetimeAddon($data)
+    public function onetimeAddons($subscription_id, $addons, $additional_param = null, $redirect_url = null)
     {
+        $template = [
+            'addon_code',
+            'quantity',
+            'price',
+        ];
+        $data = ['subscription_id' => $subscription_id];
+        $data['addons'] = [];
+        foreach ($addons as $value) {
+            $data['addons'][] = $this->prepareData($value, $template);
+        }
+        if ($additional_param !== null){
+            $data['additional_param'] = $additional_param;
+        }
+        if ($redirect_url){
+            $data['redirect_url'] = $redirect_url;
+        }
         $response = $this->request('POST', 'hostedpages/buyonetimeaddon', [
             'content-type' => 'application/json',
             'body' => json_encode($data),
         ]);
-
-        return $this->processResponse($response);
+        $this->processResponseAndSave($response);
     }
 }
