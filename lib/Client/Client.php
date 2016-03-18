@@ -259,10 +259,11 @@ class Client implements \ArrayAccess
      * Return data of single Entity from Zoho
      * @param array $query
      * @param integer $page
+     * @param string $command
      * @return array
      * @throws SubscriptionException
      */
-    public function getListPage(array $query, $page = 0)
+    public function getListPage(array $query, $page = 0, $command = null)
     {
         $cacheKey = sprintf('zoho_%s_%s_%s', $this->command, implode('', array_keys($query)), $page);
         
@@ -272,7 +273,8 @@ class Client implements \ArrayAccess
             if ($page > 0){
                 $query['page'] = $page;
             }
-            $response = $this->request('GET', $this->command,[
+            $command = empty($command) ? $this->command : $command;
+            $response = $this->request('GET', $command, [
                 'content-type' => 'application/json',
                 'query' => $query,
             ]);
@@ -290,10 +292,11 @@ class Client implements \ArrayAccess
     /**
      * Returns list of all Entities from Zoho
      * @param array $query Custom query
+     * @param string $command
      * @return array
      * @throws SubscriptionException
      */
-    public function getList(array $query = []){
+    public function getList(array $query = [], $command = null){
         $page = 1;
         $result = [];
         do {

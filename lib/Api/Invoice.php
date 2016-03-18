@@ -156,6 +156,6 @@ class Invoice extends Client
             'content-type' => 'application/json',
             'body' => $request,
         ]);
-                
+        $this->processResponse($response);
     }
 }
