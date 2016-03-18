@@ -470,7 +470,7 @@ class Client implements \ArrayAccess
     }
 
     public function offsetExists($offset) {
-        return isset($this->container[$offset]);
+        return isset($this->container[$offset]) or isset($this->container[$this->module][$offset]);
     }
 
     public function offsetUnset($offset) {
