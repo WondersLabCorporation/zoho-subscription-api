@@ -59,6 +59,17 @@ class Addon extends Client
     }
     
     /**
+     * Returns all addons as objects.
+     * 
+     * @return array
+     * @throws SubscriptionException
+     */
+    public function getList() {
+        $result = parent::getList();
+        return $this->buildEntitiesFromArray($result);
+    }
+    
+    /**
      * @param array $filters associative array of filters
      *
      * @throws \Exception
@@ -89,30 +100,38 @@ class Addon extends Client
 
         return $hit;
     }
+    
+    /**
+     * Delete an existing addon.
+     * @param string $addon_code
+     * @throws SubscriptionException
+     */
+    public function delete($addon_code = null)
+    {
+        if (empty($addon_code)){
+            $addon_code = $this['addon_code'];
+        }
+        $response = $this->request('DELETE', sprintf('addons/%s', $this->getId()));
+        $this->processResponse($response);
+    }
 
     /**
-     * @param int $addonCode
-     *
-     * @throws \Exception
-     *
-     * @return array
+     * Change the status of the addon to active.
+     * @throws SubscriptionException
      */
-    public function getAddon($addonCode)
+    public function markActive()
     {
-        $cacheKey = sprintf('addon_%s', $addonCode);
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->client->request('GET', sprintf('addons/%s', $addonCode));
-
-            $data = $this->processResponse($response);
-            $addon = $data['addon'];
-
-            $this->saveToCache($cacheKey, $addon);
-
-            return $addon;
-        }
-
-        return $hit;
+        $response = $this->request('POST', sprintf('addons/%s/markasactive', $this->getId()));
+        $this->processResponse($response);
+    }
+    
+    /**
+     * Change the status of the addon to inactive.
+     * @throws SubscriptionException
+     */
+    public function markInactive()
+    {
+        $response = $this->request('POST', sprintf('addons/%s/markasinactive', $this->getId()));
+        $this->processResponse($response);
     }
 }

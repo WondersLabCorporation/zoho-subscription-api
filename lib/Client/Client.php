@@ -82,7 +82,7 @@ class Client implements \ArrayAccess
      */
     protected function processResponse(Response $response=null)
     {
-        if ($this->hasError()){
+        if ($this->error){
             throw new SubscriptionException($this->error);
         }
         if ($response === null){
@@ -157,22 +157,6 @@ class Client implements \ArrayAccess
     }
     
     /**
-     * @return boolean
-     */
-    public function hasError()
-    {
-        return !empty($this->error);
-    }
-    
-    /**
-     * @return string
-     */
-    public function getError()
-    {
-        return $this->error;
-    }
-    
-    /**
      * @return array
      */
     public function getWarnings()
@@ -211,9 +195,8 @@ class Client implements \ArrayAccess
      * @throws SubscriptionException
      */
     public function save(array $template = null){
-        $this->error = null;
         $data = $this->container[$this->module];
-        $this->beforPrepareData($data);
+        $this->beforeSave($data);
         $data = $this->prepareData($data, $template);
         $response = $this->internalSave($data);
         $this->container = $response;
@@ -238,7 +221,7 @@ class Client implements \ArrayAccess
         return $this->processResponse($response);
     }
     
-    protected function beforPrepareData(&$data)
+    protected function beforeSave(&$data)
     {
         return;
     }
@@ -272,15 +255,26 @@ class Client implements \ArrayAccess
         return $result;
     }
     
-    public function getListPage($query, $page)
+    /**
+     * Return data of single Entity from Zoho
+     * @param array $query
+     * @param integer $page
+     * @return array
+     * @throws SubscriptionException
+     */
+    public function getListPage(array $query, $page = 0)
     {
-        $cacheKey = sprintf('zoho_%s_%s', $this->command, $page);
+        $cacheKey = sprintf('zoho_%s_%s_%s', $this->command, implode('', array_keys($query)), $page);
         
         $hit = $this->getFromCache($cacheKey);
         
         if ($hit === false){
+            if ($page > 0){
+                $query['page'] = $page;
+            }
             $response = $this->request('GET', $this->command,[
-                'query' => ($query + ['page' => $page]),
+                'content-type' => 'application/json',
+                'query' => $query,
             ]);
             
             $result = $this->processResponse($response);
@@ -293,7 +287,13 @@ class Client implements \ArrayAccess
         return $hit;
     }
     
-    public function getList($query = []){
+    /**
+     * Returns list of all Entities from Zoho
+     * @param array $query Custom query
+     * @return array
+     * @throws SubscriptionException
+     */
+    public function getList(array $query = []){
         $page = 1;
         $result = [];
         do {
@@ -419,6 +419,26 @@ class Client implements \ArrayAccess
     }
     
     /**
+     * Build Entitiy objects form array
+     * @param array $entities_data
+     * @param string $entity_name If null then name will be taken from $module param.
+     * @return array Array of Entities
+     */
+    protected function buildEntitiesFromArray(array $entities_data, $entity_name = null)
+    {
+        if (empty($entity_name)){
+            $entity_name = ucfirst($this->module);
+        }
+        $result = [];
+        foreach ($entities_data as $data) {
+            $entity = self::createEntity($entity_name, $this, [$this->cache, $this->ttl]);
+            $entity[] = $data;
+            array_push($result, $entity);
+        }
+        return $result;
+    }
+    
+    /**
      * Non exception wrapper for Guzzle client
      * 
      * @param string $method
@@ -455,7 +475,7 @@ class Client implements \ArrayAccess
     }
 
     public function &offsetGet($offset) {
-        if (isset($this->container[$this->module], $this->container[$this->module][$offset])){
+        if (isset($this->container[$this->module]) and isset($this->container[$this->module][$offset])){
             return $this->container[$this->module][$offset];
         } elseif (isset($this->container[$offset])){
             return $this->container[$offset];

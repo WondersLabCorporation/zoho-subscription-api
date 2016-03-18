@@ -15,11 +15,6 @@ class Customer extends Client
     protected $command = 'customers';
     protected $module = 'customer';
 
-    protected function beforPrepareData(array &$data)
-    {
-        return;
-    }
-    
     protected $base_template = [
         'display_name',
         'first_name',
@@ -53,84 +48,57 @@ class Customer extends Client
         'custom_fields',
     ];
     
+    
     /**
-     * @param string $customerEmail The customer's email
-     *
-     * @throws \Exception
-     *
-     * @return array
+     * Delete an existing customer.
+     * @param integer $customer_id
+     * @throws SubscriptionException
      */
-    public function getListCustomersByEmail($customerEmail)
+    public function delete($customer_id = null)
     {
-        $cacheKey = sprintf('zoho_customer_%s', md5($customerEmail));
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->request('GET', 'customers', [
-                'query' => ['email' => $customerEmail],
-            ]);
-
-            $result = $this->processResponse($response);
-            if ($this->hasError()){
-                return null;
-            }
-            $customers = $result['customers'];
-
-            $this->saveToCache($cacheKey, $customers);
-
-            return $customers;
+        if (empty($customer_id)){
+            $customer_id = $this['customer_id'];
         }
-
-        return $hit;
-    }
-
-    /**
-     * @param string $customerEmail
-     *
-     * @return array
-     */
-    public function getCustomerByEmail($customerEmail)
-    {
-        $customers = $this->getListCustomersByEmail($customerEmail);
-
-        return $this->getCustomerById($customers[0]['customer_id']);
-    }
-
-    /**
-     * @param string $customerId The customer's id
-     *
-     * @throws \Exception
-     *
-     * @return array
-     */
-    public function getCustomerById($customerId)
-    {
-        $cacheKey = sprintf('zoho_customer_%s', $customerId);
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->request('GET', sprintf('customers/%s', $customerId));
-            $result = $this->processResponse($response);
-
-            $customer = $result['customer'];
-
-            $this->saveToCache($cacheKey, $customer);
-
-            return $customer;
-        }
-        
-        return $hit;
+        $response = $this->request('DELETE', sprintf('customers/%s', $this->getId()));
+        $this->processResponse($response);
     }
     
     /**
-     * @param array $customer
+     * Returns all customers as objects.
+     * 
+     * @return array
+     * @throws SubscriptionException
      */
-    private function deleteCustomerCache($customer)
+    public function getList() {
+        $result = parent::getList();
+        return $this->buildEntitiesFromArray($result);
+    }
+    
+    /**
+     * @param string $customer_email The customer's email
+     *
+     * @return array
+     * @throws SubscriptionException
+     */
+    public function getListByEmail($customer_email)
     {
-        $cacheKey = sprintf('zoho_customer_%s', $customer['customer_id']);
-        $this->deleteCacheByKey($cacheKey);
+        if (empty($customer_email)){
+            $customer_email = $this['email'];
+        }
+        $result = parent::getList(['email' => $customer_email]);
+        return $this->buildEntitiesFromArray($result);
+    }
 
-        $cacheKey = sprintf('zoho_customer_%s', md5($customer['email']));
-        $this->deleteCacheByKey($cacheKey);
+    /**
+     * @param string $customer_email
+     *
+     * @return array
+     * @throws SubscriptionException
+     */
+    public function getByEmail($customer_email)
+    {
+        $customers = $this->getListByEmail($customer_email);
+
+        return $this->load($customers[0]['customer_id']);
     }
 }

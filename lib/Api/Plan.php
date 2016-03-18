@@ -67,17 +67,11 @@ class Plan extends Client
      */
     public function getList() {
         $result = parent::getList();
-        $plans = [];
-        foreach ($result as $value) {
-            $plan = self::createEntity('Plan', $this, [$this->cache, $this->ttl]);
-            $plans[] = $value;
-            array_push($plans, $plan);
-        }
-        return $plans;
+        return $this->buildEntitiesFromArray($result);
     }
 
     /**
-     * get reccurent addons for given plan.
+     * Get reccurent addons for given plan.
      *
      * @return array
      * @throws SubscriptionException
@@ -86,17 +80,60 @@ class Plan extends Client
     {
         $addonApi = self::createEntity('Addon', $this, [$this->cache, $this->ttl]);
         $result = $addonApi->getList();
-        $addons = [];
-        foreach ($result as $value) {
-            foreach ($value['plans'] as $plan) {
+        $addons = $this->buildEntitiesFromArray($result, 'Addon');
+        return array_filter($addons, function($addon){
+            foreach ($addon['plans'] as $plan){
                 if ($plan['plan_code'] == $this['plan_code']){
-                    $addon = self::createEntity('Addon', $this, [$this->cache, $this->ttl]);
-                    $addon[] = $result;
-                    $addons[] = $addon;
-                    break;
+                    return true;
                 }
             }
+            return false;
+        });
+    }
+    
+    /**
+     * Delete an existing plan.
+     * @param string $plan_code
+     * @throws SubscriptionException
+     */
+    public function delete($plan_code = null)
+    {
+        if (empty($plan_code)){
+            $plan_code = $this['plan_code'];
         }
-        return $addons;
+        $response = $this->request('DELETE', sprintf('plans/%s', $this->getId()));
+        $this->processResponse($response);
+    }
+    
+    /**
+     * List of all plans created for a particular product.
+     * @param integer $product_id
+     * @return array
+     * @throws SubscriptionException
+     */
+    public function getListByProduct($product_id)
+    {
+        $result = parent::getList(['product_id' => $product_id]);
+        return $this->buildEntitiesFromArray($result);
+    }
+
+    /**
+     * Change the status of the plan to active.
+     * @throws SubscriptionException
+     */
+    public function markActive()
+    {
+        $response = $this->request('POST', sprintf('plans/%s/markasactive', $this->getId()));
+        $this->processResponse($response);
+    }
+    
+    /**
+     * Change the status of the plan to inactive.
+     * @throws SubscriptionException
+     */
+    public function markInactive()
+    {
+        $response = $this->request('POST', sprintf('plans/%s/markasinactive', $this->getId()));
+        $this->processResponse($response);
     }
 }

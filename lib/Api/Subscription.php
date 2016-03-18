@@ -16,7 +16,7 @@ class Subscription extends Client
     protected $command = 'subscriptions';
     protected $module = 'subscription';
     
-    protected function beforPrepareData(array &$data)
+    protected function beforeSave(array &$data)
     {
         if (isset($data['card_id'], $data['card']))
         {
@@ -153,7 +153,8 @@ class Subscription extends Client
             $request_data['exchange_rate'] = $exchange_rate;
         }
         $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), [
-            'json' => json_encode($request_data),
+            'content-type' => 'application/json',
+            'body' => json_encode($request_data),
         ]);
         $this->processResponseAndSave($response);
     }
@@ -164,6 +165,7 @@ class Subscription extends Client
      * @param array $addons ['addon_code' (required), 'quantity' (optional), 'price' (optional), 'tax_id' (optional)]
      * @param float $exchange_rate Oprional
      * @return boolean
+     * @throws SubscriptionException
      */
     public function buyOneTimeAddons(array $addons, $exchange_rate = null)
     {
@@ -181,7 +183,8 @@ class Subscription extends Client
             $request_data['exchange_rate'] = $exchange_rate;
         }
         $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), [
-            'json' => json_encode($request_data),
+            'content-type' => 'application/json',
+            'body' => json_encode($request_data),
         ]);
         $this->processResponseAndSave($response);
     }
@@ -191,6 +194,7 @@ class Subscription extends Client
      * 
      * @param string $coupon_code
      * @return null
+     * @throws SubscriptionException
      */
     public function associateCoupon($coupon_code)
     {
@@ -206,33 +210,11 @@ class Subscription extends Client
      */
     public function getListByCustomer($customer_id = null)
     {
-        if ($customer_id === null){
+        if (empty($customer_id)){
             $customer_id = $this['customer']['customer_id'];
         }
-        if ($customer_id === null){
-            return null;
-        }
-        $page = 1;
-        $subscriptions = [];
-        do {
-            $response = $this->request('GET', 'subscriptions',[
-                'query' => ['customer_id' => $customer_id, 'page' => $page],
-            ]);
-            $result = $this->processResponse($response);
-            foreach ($result['subscriptions'] as $value) {
-                $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
-                $subscription[] = $value;
-                array_push($subscriptions, $subscription);
-            }
-            if ($result['page_context']['has_more_page']){
-                $page++;
-                $nextPage = $page;
-            } else {
-                $nextPage = false;
-            }
-            
-        } while ($nextPage);
-        return $subscriptions;
+        $result = parent::getList($query);
+        return $this->buildEntitiesFromArray($result);
     }
     
     /**
@@ -245,12 +227,68 @@ class Subscription extends Client
     {
         $query = is_null($customer_id) ? ['customer_id' => $customer_id] : [];
         $result = parent::getList($query);
-        $subscriptions = [];
-        foreach ($result as $value) {
-            $subscription = self::createEntity('Subscription', $this, [$this->cache, $this->ttl]);
-            $subscription[] = $value;
-            array_push($subscriptions, $subscription);
-        }
-        return $subscriptions;
+        return $this->buildEntitiesFromArray($result);
     }
+    
+    /**
+     * Cancell subscription immediately or at the end of the current term based on the value of cancel_at_end.
+     * If cancel_at_end is set to true then the status of the subscription is changed to 'non_renewing'
+     * and if it is false, the status would be 'cancelled'.
+     * 
+     * @param boolean $cancel_at_end
+     * @return mixed
+     * @throws SubscriptionException
+     */
+    public function cancel($cancel_at_end = false)
+    {
+        $cancel_at_end = $cancel_at_end ? 'true' : 'false';
+        $response = $this->request('POST', sprintf('subscriptions/%s/cancel?cancel_at_end=%s', $this->getId(), $cancel_at_end));
+        $this->processResponseAndSave($response);
+    }
+    
+    /**
+     * Charge a one-time amount for the subscription.
+     * @param float $amount
+     * @param string $description
+     * @throws SubscriptionException
+     */
+    public function addCharge($amount, $description = '')
+    {
+        $data = [];
+        $data['amount'] = $amount;
+        $data['description'] = $description;
+        $response = $this->request('POST', sprintf('subscriptions/%s/charge', $this->getId()), [
+            'content-type' => 'application/json',
+            'body' => json_encode($data),
+        ]);
+        $this->processResponseAndSave($response);
+    }
+
+    /**
+     * Reactivate a subscription. You can reactivate a subscription only if the status of the subscription is non-renewing.
+     * @throws SubscriptionException
+     */
+    public function reactivate()
+    {
+        $response = $this->request('POST', sprintf('subscriptions/%s/reactivate', $this->getId()));
+        $this->processResponseAndSave($response);
+    }
+
+    /**
+     * Renewal date refers to the billing date of the subsequent term. 
+     * You can postpone date of renewal of the subscription by specifying an appropriate date on which the customer should be billed.
+     * @param date $renewal_at Date in 'yyyy-mm-dd'
+     * @throws SubscriptionException
+     */
+    public function postpone($renewal_at)
+    {
+        $data = [];
+        $data['renewal_at'] = $renewal_at;
+        $response = $this->request('POST', sprintf('subscriptions/%s/postpone', $this->getId()), [
+            'content-type' => 'application/json',
+            'body' => json_encode($data),
+        ]);
+        $this->processResponseAndSave($response);
+    }
+
 }
