@@ -33,7 +33,7 @@ class ContactPerson extends Client
     
     protected function getCommandRetrieve()
     {
-        return sprintf('customers/%s/contactpersons/%s', $this['customer_id'], $this->getId);
+        return sprintf('customers/%s/contactpersons/%s', $this['customer_id'], $this->getId());
     }
     
     protected function getCommandCreate()
@@ -43,7 +43,7 @@ class ContactPerson extends Client
     
     protected function getCommandUpdate()
     {
-        return sprintf('customers/%s/contactpersons/%s', $this['customer_id'], $this->getId);
+        return sprintf('customers/%s/contactpersons/%s', $this['customer_id'], $this->getId());
     }
     
     /**
@@ -53,7 +53,7 @@ class ContactPerson extends Client
      */
     public function delete($contactperson_id = null)
     {
-        $contactperson_id = empty($payment_id) ? $this->getId() : $contactperson_id;
+        $contactperson_id = empty($contactperson_id) ? $this->getId() : $contactperson_id;
         $response = $this->request('DELETE', sprintf('customers/%s/contactpersons/%s', $this['customer_id'], $contactperson_id));
         $this->processResponse($response);
     }

@@ -38,7 +38,7 @@ class Card extends Client
     
     protected function getCommandRetrieve()
     {
-        return sprintf('customers/%s/cards/%s', $this['customer_id'], $this->getId);
+        return sprintf('customers/%s/cards/%s', $this['customer_id'], $this->getId());
     }
     
     protected function getCommandCreate()
@@ -48,7 +48,7 @@ class Card extends Client
     
     protected function getCommandUpdate()
     {
-        return sprintf('customers/%s/cards/%s', $this['customer_id'], $this->getId);
+        return sprintf('customers/%s/cards/%s', $this['customer_id'], $this->getId());
     }
     
     /**
