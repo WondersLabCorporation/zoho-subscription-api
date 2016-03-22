@@ -25,9 +25,7 @@ class Card extends Client
 
     public function load($id = null)
     {
-        if (empty($this['customer_id'])){
-            assert('You must specify customer_id before load an entity.');
-        }
+        assert(isset($this['customer_id']), 'You must specify customer_id before load an entity.');
         parent::load($id);
     }
     
