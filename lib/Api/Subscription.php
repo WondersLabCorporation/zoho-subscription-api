@@ -225,7 +225,7 @@ class Subscription extends Client
      */
     public function getList($customer_id = null)
     {
-        $query = is_null($customer_id) ? ['customer_id' => $customer_id] : [];
+        $query = is_null($customer_id) ? [] : ['customer_id' => $customer_id];
         $result = parent::getList($query);
         return $this->buildEntitiesFromArray($result);
     }

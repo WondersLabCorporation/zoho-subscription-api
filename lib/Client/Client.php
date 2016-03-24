@@ -58,27 +58,28 @@ class Client implements \ArrayAccess
     protected $command;
 
     protected $base_template = [];
+    
+    protected $params;
+    
     /**
-     * @param string                            $token
-     * @param int                               $organizationId
-     * @param Cache|null $cache
-     * @param int                               $ttl
+     * @param array $params
      * @throws \Exception
      */
-    public function __construct($token, $organizationId, Cache $cache = null, $ttl = 7200)
+    public function __construct($params)
     {
-        if ($token === null or $organizationId === null){
+        if (empty($params['organizationId']) || empty($params['subscriptionsToken'])){
             throw new \Exception('Token and Organization ID must not be null values');
         }
+        $this->params = $params;
         $this->warnings = [];
-        $this->subscriptionsToken = $token;
-        $this->organizationId = $organizationId;
-        $this->ttl = $ttl;
-        $this->cache = $cache;
+        $this->subscriptionsToken = $params['subscriptionsToken'];
+        $this->organizationId = $params['organizationId'];
+        $this->ttl = isset($params['ttl']) ? $params['ttl'] : 7200;
+        $this->cache = isset($params['cache']) ? $params['cache'] : null;
         $this->client = new GuzzleClient([
             'headers' => [
-                'Authorization' => 'Zoho-authtoken '.$token,
-                'X-com-zoho-subscriptions-organizationid' => $organizationId,
+                'Authorization' => 'Zoho-authtoken '.$this->subscriptionsToken,
+                'X-com-zoho-subscriptions-organizationid' => $this->organizationId,
             ],
             'base_uri' => 'https://subscriptions.zoho.com/api/v1/',
         ]);
@@ -128,7 +129,7 @@ class Client implements \ArrayAccess
     protected function getFromCache($key)
     {
         // If the results are already cached
-        if ($this->cache and $this->cache->contains($key)) {
+        if ($this->cache !== null and $this->cache->contains($key)) {
             return unserialize($this->cache->fetch($key));
         }
 
@@ -324,7 +325,6 @@ class Client implements \ArrayAccess
                 $nextPage = false;
             }
         } while($nextPage);
-        
         return $result;
     }
     
@@ -383,10 +383,9 @@ class Client implements \ArrayAccess
         if (empty($params['id'])) {
             throw new SubscriptionException('Subscription entity ID param is required');
         }
-        $id = $params['id'];
         $entityItem = static::createEntity($entity, $params);
         $entityItem->error = [];
-        $entityItem->load($id);
+        $entityItem->load($params['id']);
         return $entityItem;
     }
     
@@ -408,30 +407,34 @@ class Client implements \ArrayAccess
         if (empty($params['organizationId'])){
             throw new SubscriptionException('Organization id param is required');
         }
-        $classReflection = static::getClassReflection($entity, true);
-        return $classReflection->newInstanceArgs($params);
+        if (empty($params['path'])){
+            throw new SubscriptionException('Path to Subscription library is required');
+        }
+        $classname = $params['path'] . $entity;
+        if(!class_exists($classname)){
+            throw new SubscriptionException('No such entity found');
+        }
+        return new $classname($params);
     }
     
-    /**
+       /**
+     * Create a class with a given arguments.
      * 
+     * Class name
      * @param string $entity
-     * @param boolean $throwException
-     * @return \ReflectionClass
+     * Args to extract into __cuonstruct method
+     * @param array $params
+     * @return Client
      * @throws SubscriptionException
      */
-    public static function getClassReflection($entity, $throwException = false)
+    public static function getEntityList($entity, $params = [])
     {
-        $fullClassName = 'Zoho\Subscription\Api\\' . $entity;
-        try {
-            $classReflection = new \ReflectionClass($fullClassName);
-        } catch (\ReflectionException $e) {
-            if ($throwException) {
-                throw new SubscriptionException('No such entity found');
-            } else {
-                return null;
-            }
-        }
-        return $classReflection;
+       $entity = self::createEntity($entity, $params);
+       $query = [];
+       if (isset($params['customer_id'])) {
+           $query = ['customer_id' => $params['customer_id']];
+       }
+       return $entity->getList($query);
     }
     
     /**
@@ -447,7 +450,8 @@ class Client implements \ArrayAccess
         }
         $result = [];
         foreach ($entities_data as $data) {
-            $entity = new $entity_name($this->subscriptionsToken, $this->organizationId, $this->cache, $this->ttl);
+            $classname = $this->params['path'] . $entity_name;
+            $entity = new $classname($this->params);
             $entity[] = $data;
             array_push($result, $entity);
         }
