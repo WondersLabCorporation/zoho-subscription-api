@@ -374,15 +374,17 @@ class Client implements \ArrayAccess
      * Class name
      * @param string $entity
      * Args to extract into __cuonstruct method
-     * @param Zoho $zoho
      * @param array $params
      * @return Client
-     * @throws UnknownEntityException
+     * @throws SubscriptionException
      */
-    public static function getEntity($entity, $zoho, $params = [])
+    public static function getEntity($entity, $params = [])
     {
-        $id = array_shift($params);
-        $entityItem = static::createEntity($entity, $zoho, $params);
+        if (empty($params['id'])) {
+            throw new SubscriptionException('Subscription entity ID param is required');
+        }
+        $id = $params['id'];
+        $entityItem = static::createEntity($entity, $params);
         $entityItem->error = [];
         $entityItem->load($id);
         return $entityItem;
