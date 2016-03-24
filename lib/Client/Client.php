@@ -49,12 +49,21 @@ class Client implements \ArrayAccess
      * @var array 
      */
     protected $container;
-    
+
+    /**
+     * @var string module name
+     */
+    protected $module;
+
+    protected $command;
+
+    protected $base_template = [];
     /**
      * @param string                            $token
      * @param int                               $organizationId
-     * @param \Doctrine\Common\Cache\Cache|null $cache
+     * @param Cache|null $cache
      * @param int                               $ttl
+     * @throws \Exception
      */
     public function __construct($token, $organizationId, Cache $cache = null, $ttl = 7200)
     {
@@ -77,18 +86,19 @@ class Client implements \ArrayAccess
 
     /**
      * @param Response $response
+     * @throws SubscriptionException
      *
      * @return array
      */
-    protected function processResponse(Response $response=null)
+    protected function processResponse(Response $response = null)
     {
         if ($this->error){
             throw new SubscriptionException($this->error);
         }
-        if ($response === null){
+        if ($response === null) {
             throw new SubscriptionException('Zoho Api subscription error : null data in processResponse');
         }
-        if ($response->getStatusCode() > 201){
+        if ($response->getStatusCode() > 201) {
             throw new SubscriptionException('Zoho Api subscription error : '.$response->getReasonPhrase());
         }
         $data = json_decode($response->getBody(), true);
@@ -147,13 +157,15 @@ class Client implements \ArrayAccess
 
     /**
      * @param string $key
+     * 
+     * @return boolean
      */
     protected function deleteCacheByKey($key)
     {
         if ($this->cache === null){
             return true;
         }
-        $this->cache->delete($key);
+        return $this->cache->delete($key);
     }
     
     /**
@@ -194,7 +206,8 @@ class Client implements \ArrayAccess
      * @return \Zoho\Subscription\Client\Client
      * @throws SubscriptionException
      */
-    public function save(array $template = null){
+    public function save(array $template = null)
+    {
         $data = $this->container[$this->module];
         $this->beforeSave($data);
         $data = $this->prepareData($data, $template);
@@ -203,7 +216,7 @@ class Client implements \ArrayAccess
         return $this;
     }
 
-    protected function internalsave(array $data)
+    protected function internalSave(array $data)
     {
         if ($this->getId() === null){
             $data = $this->prepareData($data, $this->getCreateTemplate());
@@ -248,7 +261,7 @@ class Client implements \ArrayAccess
                         $result[$rowKey] = $this->prepareData($rowValue, $value);
                     }
                 }
-            } elseif (array_key_exists($value, $data) and !empty($data[$value])){
+            } elseif (array_key_exists($value, $data) && !empty($data[$value])){
                 $result[$value] = $data[$value];
             }
         }
@@ -362,7 +375,6 @@ class Client implements \ArrayAccess
      * @param string $entity
      * Args to extract into __cuonstruct method
      * @param Zoho $zoho
-     * @param mixed $id
      * @param array $params
      * @return Client
      * @throws UnknownEntityException
@@ -382,19 +394,18 @@ class Client implements \ArrayAccess
      * Class name
      * @param string $entity
      * Args to extract into __cuonstruct method
-     * @param Zoho $zoho
+     * @param array $params
      * @return Client
-     * @throws UnknownEntityException
+     * @throws SubscriptionException
      */
-    public static function createEntity($entity, $zoho, $params = [])
+    public static function createEntity($entity, $params = [])
     {
-        if ($zoho->subscriptionsToken === null){
-            throw new InvalidConfigException('Subscription auth token param is required');
+        if (empty($params['subscriptionsToken'])) {
+            throw new SubscriptionException('Subscription auth token param is required');
         }
-        if ($zoho->organizationId === null){
-            throw new InvalidConfigException('Organization id param is required');
+        if (empty($params['organizationId'])){
+            throw new SubscriptionException('Organization id param is required');
         }
-        $params = array_merge([$zoho->subscriptionsToken, $zoho->organizationId], $params);
         $classReflection = static::getClassReflection($entity, true);
         return $classReflection->newInstanceArgs($params);
     }
@@ -404,7 +415,7 @@ class Client implements \ArrayAccess
      * @param string $entity
      * @param boolean $throwException
      * @return \ReflectionClass
-     * @throws UnknownEntityException
+     * @throws SubscriptionException
      */
     public static function getClassReflection($entity, $throwException = false)
     {
@@ -413,7 +424,7 @@ class Client implements \ArrayAccess
             $classReflection = new \ReflectionClass($fullClassName);
         } catch (\ReflectionException $e) {
             if ($throwException) {
-                throw new UnknownEntityException('No such entity found');
+                throw new SubscriptionException('No such entity found');
             } else {
                 return null;
             }
@@ -434,7 +445,7 @@ class Client implements \ArrayAccess
         }
         $result = [];
         foreach ($entities_data as $data) {
-            $entity = self::createEntity($entity_name, $this, [$this->cache, $this->ttl]);
+            $entity = new $entity_name($this->subscriptionsToken, $this->organizationId, $this->cache, $this->ttl);
             $entity[] = $data;
             array_push($result, $entity);
         }

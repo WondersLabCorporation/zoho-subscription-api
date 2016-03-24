@@ -78,7 +78,7 @@ class Plan extends Client
      */
     public function getAddons()
     {
-        $addonApi = self::createEntity('Addon', $this, [$this->cache, $this->ttl]);
+        $addonApi = new Addon($this->subscriptionsToken, $this->organizationId, $this->cache, $this->ttl);
         $result = $addonApi->getList();
         $addons = $this->buildEntitiesFromArray($result, 'Addon');
         return array_filter($addons, function($addon){
