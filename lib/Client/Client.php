@@ -417,14 +417,14 @@ class Client implements \ArrayAccess
         return new $classname($params);
     }
     
-       /**
-     * Create a class with a given arguments.
+    /**
+     * Return array of Entity objects.
      * 
      * Class name
      * @param string $entity
      * Args to extract into __cuonstruct method
      * @param array $params
-     * @return Client
+     * @return array
      * @throws SubscriptionException
      */
     public static function getEntityList($entity, $params = [])
