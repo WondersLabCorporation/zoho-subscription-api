@@ -10,6 +10,7 @@ use \Zoho\Subscription\Api\SubscriptionException;
 
 class Client implements \ArrayAccess
 {
+    const DEFAULT_ENTITIES_NAMESPACE = 'Zoho\Subscription\Api\\';
     /**
      * @var String
      */
@@ -68,7 +69,7 @@ class Client implements \ArrayAccess
     public function __construct($params)
     {
         if (empty($params['organizationId']) || empty($params['subscriptionsToken'])){
-            throw new \Exception('Token and Organization ID must not be null values');
+            throw new \Exception('Token and Organization ID are required');
         }
         $this->params = $params;
         $this->warnings = [];
@@ -324,7 +325,7 @@ class Client implements \ArrayAccess
             } else {
                 $nextPage = false;
             }
-        } while($nextPage);
+        } while ($nextPage);
         return $result;
     }
     
@@ -394,21 +395,14 @@ class Client implements \ArrayAccess
      * 
      * Class name
      * @param string $entity
-     * Args to extract into __cuonstruct method
-     * @param array $params
+     * @param array $params data to pass to entity constructor
      * @return Client
      * @throws SubscriptionException
      */
     public static function createEntity($entity, $params = [])
     {
-        if (empty($params['subscriptionsToken'])) {
-            throw new SubscriptionException('Subscription auth token param is required');
-        }
-        if (empty($params['organizationId'])){
-            throw new SubscriptionException('Organization id param is required');
-        }
         if (empty($params['path'])){
-            throw new SubscriptionException('Path to Subscription library is required');
+            $params['path'] = self::DEFAULT_ENTITIES_NAMESPACE;
         }
         $classname = $params['path'] . $entity;
         if(!class_exists($classname)){
@@ -420,15 +414,14 @@ class Client implements \ArrayAccess
     /**
      * Return array of Entity objects.
      * 
-     * Class name
-     * @param string $entity
-     * Args to extract into __cuonstruct method
-     * @param array $params
+     * @param string $entity Class name
+     * @param array $params data to pass to entity constructor
      * @return array
      * @throws SubscriptionException
      */
     public static function getEntityList($entity, $params = [])
     {
+        // TODO: Find a better solution instead of creating new entity and use it.
        $entity = self::createEntity($entity, $params);
        $query = [];
        if (isset($params['customer_id'])) {
