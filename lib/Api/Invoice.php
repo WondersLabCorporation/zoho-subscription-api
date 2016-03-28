@@ -2,7 +2,7 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 /**
  * @author Hang Pham <thi@yproximite.com>
@@ -10,7 +10,7 @@ use Zoho\Subscription\Client\Client;
  *
  * @link https://www.zoho.com/subscriptions/api/v1/#invoices
  */
-class Invoice extends Client
+class Invoice extends Record
 {
     protected $command = 'invoices';
     protected $module = 'invoice';

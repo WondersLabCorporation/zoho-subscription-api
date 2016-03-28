@@ -2,7 +2,7 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 /**
  * Addon.
@@ -12,7 +12,7 @@ use Zoho\Subscription\Client\Client;
  *
  * @link https://www.zoho.com/subscriptions/api/v1/#addons
  */
-class Addon extends Client
+class Addon extends Record
 {
     protected $command = 'addons';
     protected $module = 'addon';

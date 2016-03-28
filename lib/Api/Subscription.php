@@ -2,7 +2,7 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 /**
  * Subscription.
@@ -11,10 +11,28 @@ use Zoho\Subscription\Client\Client;
  *
  * @link https://www.zoho.com/subscriptions/api/v1/#subscriptions
  */
-class Subscription extends Client
+class Subscription extends Record
 {
     protected $command = 'subscriptions';
     protected $module = 'subscription';
+    
+    public $subscription_id;
+    public $card_id;
+    public $card;
+    public $exchange_rate;
+    public $plan;
+    public $addons;
+    public $reference_id;
+    public $customer_id;
+    public $customer;
+    public $coupon_code;
+    public $auto_collect;
+    public $starts_at;
+    public $salesperson_name;
+    public $custom_fields;   
+    public $end_of_term;
+    public $prorate;
+    public $status;
     
     protected function beforeSave(array &$data)
     {
@@ -205,7 +223,7 @@ class Subscription extends Client
     /**
      * @param string $customer_id The customer's id
      *
-     * @return array Array of Subscription objects
+     * @return Subscription[]
      * @throws SubscriptionException
      */
     public function getListByCustomer($customer_id = null)
@@ -221,7 +239,7 @@ class Subscription extends Client
     /**
      * @param string $customer_id The customer's id
      * 
-     * @return array Array of Subscription objects
+     * @return Subscription[]
      * @throws SubscriptionException
      */
     public function getList($customer_id = null)

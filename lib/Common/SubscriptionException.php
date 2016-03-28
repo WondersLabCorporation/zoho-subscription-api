@@ -1,6 +1,6 @@
 <?php
 
-namespace Zoho\Subscription\Api;
+namespace Zoho\Subscription\Common;
 
 class SubscriptionException extends \Exception
 {

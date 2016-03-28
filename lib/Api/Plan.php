@@ -2,7 +2,7 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 /**
  * Plan.
@@ -12,19 +12,35 @@ use Zoho\Subscription\Client\Client;
  *
  * @link https://www.zoho.com/subscriptions/api/v1/#plans
  */
-class Plan extends Client
+class Plan extends Record
 {
     protected $command = 'plans';
     protected $module = 'plan';
     
+    public $name;
+    public $recurring_price;
+    public $interval;
+    public $interval_unit;
+    public $billing_cycles;
+    public $trial_period;
+    public $setup_fee;
+    public $product_id;
+    public $tax_id;
+    public $plan_code;
+    public $end_of_term;
+    public $prorate;
+    public $price;
+    public $status;
+    public $description;
+            
     protected function getId()
     {
-        return $this['plan_code'];
+        return $this->plan_code;
     }
     
     protected function setId($id)
     {
-        $this['plan_code'] = $id;
+        $this->plan_code = $id;
     }
     
     protected $base_template = [

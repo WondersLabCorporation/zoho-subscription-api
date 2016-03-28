@@ -2,7 +2,7 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 /**
  * HostedPages.
@@ -11,11 +11,25 @@ use Zoho\Subscription\Client\Client;
  *
  * @link https://www.zoho.com/subscriptions/api/v1/#hosted-pages
  */
-class HostedPages extends Client
+class HostedPages extends Record
 {
     
     protected $command = 'hostedpages';
     protected $module = 'hostedpage';
+    
+    public $plan;
+    public $addons;
+    public $reference_id;
+    public $starts_at;
+    public $additional_param;
+    public $redirect_url;
+    public $customer_id;
+    public $coupon_code;
+    public $salesperson_name;
+    public $custom_fields;
+    public $subscription_id;
+    public $url;
+    public $contactpersons;
     
     protected function getUpdateMethod()
     {
@@ -24,18 +38,20 @@ class HostedPages extends Client
     
     protected function getId()
     {
-        return $this['subscription_id'];
+        return $this->subscription_id;
     }
     
     protected function setId($id)
     {
-        $this['subscription_id'] = $id;
+        $this->subscription_id = $id;
     }
     
     protected function beforeSave(array &$data)
     {
+        if (isset($data['subscription_id'])){
+            unset($data['customer_id']);
+        }
         if (isset($data['plan']) and !isset($data['plan']['plan_code'])){
-            $data->warnings[] = "You must fill 'plan_code' field for a 'Plan'";
             unset($data['plan']);
         }
         if (isset($data['addons'])){
@@ -44,7 +60,6 @@ class HostedPages extends Client
                 $ok += isset($addon['addon_code']);
             }
             if(!$ok or $ok != len($data['addons'])){
-                $this->warnings[] = "You must fill 'addon_code' field for all 'Addons'";
                 unset($data['addons']);
             }
         }
@@ -115,6 +130,24 @@ class HostedPages extends Client
         return $this->command.'/'.$this['hostedpage_id'];
     }
     
+     /**
+     * Load Zoho record by ID
+     * @param string|int $id
+     * @return boolean
+     */
+    public function load($id = null)
+    {
+        if ($id !== null){
+            $this->setId($id);
+        }
+        $response = $this->client->getRecord($this->getCommandRetrieve());
+        if ($this->hasError()){
+            return false;
+        }
+        $this->setAttributes($response[$this->module]);
+        $this->setAttribute('url', $response['url']);
+        return true;
+    }
 
     /**
      * Create hosted page for updating card information for a subscription.

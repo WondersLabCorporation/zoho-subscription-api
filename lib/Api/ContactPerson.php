@@ -2,10 +2,10 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 
-class ContactPerson extends Client
+class ContactPerson extends Record
 {
     protected $command = 'contactpersons';
     protected $module = 'contactperson';

@@ -2,7 +2,7 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 /**
  * @author Hang Pham <thi@yproximite.com>
@@ -10,11 +10,27 @@ use Zoho\Subscription\Client\Client;
  *
  * @link   https://www.zoho.com/subscriptions/api/v1/#customers
  */
-class Customer extends Client
+class Customer extends Record
 {
     protected $command = 'customers';
     protected $module = 'customer';
-
+    
+    public $customer_id;
+    public $display_name;
+    public $first_name;
+    public $last_name;
+    public $email;
+    public $company_name;
+    public $phone;
+    public $mobile;
+    public $website;
+    public $billing_address;
+    public $shipping_address;
+    public $currency_code;
+    public $ach_supported;
+    public $notes;
+    public $custom_fields;
+                
     protected $base_template = [
         'display_name',
         'first_name',

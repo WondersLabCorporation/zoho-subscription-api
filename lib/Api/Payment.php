@@ -2,10 +2,10 @@
 
 namespace Zoho\Subscription\Api;
 
-use Zoho\Subscription\Client\Client;
+use Zoho\Subscription\Common\Record;
 
 
-class Payment extends Client
+class Payment extends Record
 {
     protected $command = 'payments';
     protected $module = 'payment';
