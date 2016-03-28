@@ -2,13 +2,14 @@
 
 namespace Zoho\Subscription\Common;
 
+use Zoho\Subscription\Client\Client;
 use Zoho\Subscription\Common\Factory;
 use Zoho\Subscription\Common\SubscriptionException;
 
 class Record
 {
      /**
-     * @var GuzzleClient
+     * @var Client
      */
     protected $client;
 
@@ -28,6 +29,7 @@ class Record
     protected $base_template = [];
     
     /**
+     * @param Client $client
      * @param array $attributes
      * @throws \Exception
      */
