@@ -87,7 +87,7 @@ class Record
         }
     }
     
-    protected function beforeSave(&$data)
+    protected function beforeSave(array &$data)
     {
         return;
     }
