@@ -36,10 +36,12 @@ class Subscription extends Record
     
     protected function beforeSave(array &$data)
     {
+        // We can send card_id or card, not both
         if (isset($data['card_id'], $data['card']))
         {
             unset($data['card']);
         }
+        // Check if all required fields is fullfiled for the 'card' field
         if (isset($data['card'])){
             
             $card = $data['card'];
@@ -54,21 +56,23 @@ class Subscription extends Record
                 $card['zip'],
                 $card['country']
             )){
-                $this->warnings[] = "You must fill all required fields for a 'Card'";
+                $this->error[] = "You must fill all required fields for a 'Card'";
                 unset($data['card']);
             }
         }
+        // Check if all required fields is fullfiled for the 'plan' field
         if (isset($data['plan']) and !isset($data['plan']['plan_code'])){
-            $data->warnings[] = "You must fill 'plan_code' field for a 'Plan'";
+            $data->error[] = "You must fill 'plan_code' field for a 'Plan'";
             unset($data['plan']);
         }
+        // Check if all required fields is fullfiled for the 'addons' field
         if (isset($data['addons'])){
             $ok = 0;
             foreach ($data['addons'] as $addon){
                 $ok += isset($addon['addon_code']);
             }
             if(!$ok or $ok != len($data['addons'])){
-                $this->warnings[] = "You must fill 'addon_code' field for all 'Addons'";
+                $this->error[] = "You must fill 'addon_code' field for all 'Addons'";
                 unset($data['addons']);
             }
         }
@@ -261,8 +265,11 @@ class Subscription extends Record
     public function cancel($cancel_at_end = false)
     {
         $cancel_at_end = $cancel_at_end ? 'true' : 'false';
-        $response = $this->request('POST', sprintf('subscriptions/%s/cancel?cancel_at_end=%s', $this->getId(), $cancel_at_end));
-        $this->processResponseAndSave($response);
+        $this->client->saveRecord('POST', sprintf('subscriptions/%s/cancel?cancel_at_end=%s', $this->getId(), $cancel_at_end));
+        if ($this->hasError()){
+            return false;
+        }
+        return true;
     }
     
     /**
