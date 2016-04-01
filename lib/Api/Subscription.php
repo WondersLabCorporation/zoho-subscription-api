@@ -33,6 +33,7 @@ class Subscription extends Record
     public $end_of_term;
     public $prorate;
     public $status;
+    public $child_invoice_id;
     
     protected function beforeSave(array &$data)
     {
@@ -152,7 +153,6 @@ class Subscription extends Record
      * @param float $tax_id Optional
      * @param float $exchange_rate Optional
      * @return boolean
-     * @throws SubscriptionException
      */
     public function buyOneTimeAddon($addon_code, $quantity = null, $price = null, $tax_id = null, $exchange_rate = null)
     {
@@ -174,11 +174,8 @@ class Subscription extends Record
         if ($exchange_rate !== null){
             $request_data['exchange_rate'] = $exchange_rate;
         }
-        $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), [
-            'content-type' => 'application/json',
-            'body' => json_encode($request_data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), $request_data);
+        return $this->processResponse($response);
     }
 
     /**
@@ -187,7 +184,6 @@ class Subscription extends Record
      * @param array $addons ['addon_code' (required), 'quantity' (optional), 'price' (optional), 'tax_id' (optional)]
      * @param float $exchange_rate Oprional
      * @return boolean
-     * @throws SubscriptionException
      */
     public function buyOneTimeAddons(array $addons, $exchange_rate = null)
     {
@@ -204,53 +200,20 @@ class Subscription extends Record
         if ($exchange_rate !== null){
             $request_data['exchange_rate'] = $exchange_rate;
         }
-        $response = $this->request('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), [
-            'content-type' => 'application/json',
-            'body' => json_encode($request_data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/buyonetimeaddon', $this->getId()), $request_data);
+        return $this->processResponse($response);
     }
     
     /**
      * Apply a coupon to a subscription which has been already created.
      * 
      * @param string $coupon_code
-     * @return null
-     * @throws SubscriptionException
+     * @return boolean
      */
     public function associateCoupon($coupon_code)
     {
-        $response = $this->request('POST', sprintf('subscriptions/%s/coupons/%s', $this->getId(), $coupon_code));
-        $this->processResponseAndSave($response);
-    }
-
-    /**
-     * @param string $customer_id The customer's id
-     *
-     * @return Subscription[]
-     * @throws SubscriptionException
-     */
-    public function getListByCustomer($customer_id = null)
-    {
-        if (empty($customer_id)){
-            $customer_id = $this['customer']['customer_id'];
-        }
-        $query = is_null($customer_id) ? [] : ['customer_id' => $customer_id];
-        $result = parent::getList($query);
-        return $this->buildEntitiesFromArray($result);
-    }
-    
-    /**
-     * @param string $customer_id The customer's id
-     * 
-     * @return Subscription[]
-     * @throws SubscriptionException
-     */
-    public function getList($customer_id = null)
-    {
-        $query = is_null($customer_id) ? [] : ['customer_id' => $customer_id];
-        $result = parent::getList($query);
-        return $this->buildEntitiesFromArray($result);
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/coupons/%s', $this->getId(), $coupon_code));
+        return $this->processResponse($response);
     }
     
     /**
@@ -259,62 +222,49 @@ class Subscription extends Record
      * and if it is false, the status would be 'cancelled'.
      * 
      * @param boolean $cancel_at_end
-     * @return mixed
-     * @throws SubscriptionException
+     * @return boolean
      */
     public function cancel($cancel_at_end = false)
     {
         $cancel_at_end = $cancel_at_end ? 'true' : 'false';
-        $this->client->saveRecord('POST', sprintf('subscriptions/%s/cancel?cancel_at_end=%s', $this->getId(), $cancel_at_end));
-        if ($this->hasError()){
-            return false;
-        }
-        return true;
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/cancel?cancel_at_end=%s', $this->getId(), $cancel_at_end));
+        return $this->processResponse($response);
     }
     
     /**
      * Charge a one-time amount for the subscription.
      * @param float $amount
      * @param string $description
-     * @throws SubscriptionException
      */
     public function addCharge($amount, $description = '')
     {
         $data = [];
         $data['amount'] = $amount;
         $data['description'] = $description;
-        $response = $this->request('POST', sprintf('subscriptions/%s/charge', $this->getId()), [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/charge', $this->getId()), $data);
+        return $this->processResponse($response);
     }
 
     /**
      * Reactivate a subscription. You can reactivate a subscription only if the status of the subscription is non-renewing.
-     * @throws SubscriptionException
      */
     public function reactivate()
     {
-        $response = $this->request('POST', sprintf('subscriptions/%s/reactivate', $this->getId()));
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/reactivate', $this->getId()));
+        return $this->processResponse($response);
     }
 
     /**
      * Renewal date refers to the billing date of the subsequent term. 
      * You can postpone date of renewal of the subscription by specifying an appropriate date on which the customer should be billed.
      * @param date $renewal_at Date in 'yyyy-mm-dd'
-     * @throws SubscriptionException
      */
     public function postpone($renewal_at)
     {
         $data = [];
         $data['renewal_at'] = $renewal_at;
-        $response = $this->request('POST', sprintf('subscriptions/%s/postpone', $this->getId()), [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', sprintf('subscriptions/%s/postpone', $this->getId()), $data);
+        return $this->processResponse($response);
     }
 
 }
