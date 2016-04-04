@@ -50,11 +50,7 @@ class Record
             $this->setId($id);
         }
         $response = $this->client->getRecord($this->getCommandRetrieve());
-        if ($this->hasError()){
-            return false;
-        }
-        $this->setAttributes($response[$this->module]);
-        return true;
+        return $this->processResponse($response);
     }
 
     /**
@@ -69,11 +65,7 @@ class Record
         $this->beforeSave($data);
         $filtered_data = $this->prepareData($data, $template);
         $response = $this->internalSave($filtered_data);
-        if ($this->hasError()){
-            return false;
-        }
-        $this->setAttributes($response[$this->module]);
-        return true;
+        return $this->processResponse($response);
     }
 
     protected function internalSave(array $data)
@@ -85,6 +77,15 @@ class Record
             $data = $this->prepareData($data, $this->getUpdateTemplate());
             return $this->client->saveRecord($this->getUpdateMethod(), $this->getCommandUpdate(), $data);
         }
+    }
+    
+    protected function processResponse($response)
+    {
+        if ($this->hasError()){
+            return false;
+        }
+        $this->setAttributes($response[$this->module]);
+        return true;
     }
     
     protected function beforeSave(array &$data)
