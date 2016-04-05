@@ -155,7 +155,7 @@ class HostedPages extends Record
      * @param string $subscription_id Required
      * @param string $additional_param Optional
      * @param string $redirect_url Optional
-     * @return null
+     * @return string|bool Return url of hostedpage or false.
      */
     public function updateCard($subscription_id, $additional_param = null, $redirect_url = null)
     {
@@ -166,11 +166,11 @@ class HostedPages extends Record
         if ($redirect_url){
             $data['redirect_url'] = $redirect_url;
         }
-        $response = $this->request('POST', 'hostedpages/updatecard', [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', 'hostedpages/updatecard', $data);
+        if ($this->hasError()){
+            return false;
+        }
+        return $response['url'];
     }
 
     /**
@@ -182,7 +182,7 @@ class HostedPages extends Record
      * @param float $price Optional
      * @param string $additional_param Optional
      * @param string $redirect_url Optional
-     * @return null
+     * @return string|bool Return url of hostedpage or false.
      */
     public function onetimeAddon($subscription_id, $addon_code, $quantity = null, $price = null, $additional_param = null, $redirect_url = null)
     {
@@ -201,11 +201,11 @@ class HostedPages extends Record
         if ($redirect_url){
             $data['redirect_url'] = $redirect_url;
         }
-        $response = $this->request('POST', 'hostedpages/buyonetimeaddon', [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', 'hostedpages/buyonetimeaddon', $data);
+        if ($this->hasError()){
+            return false;
+        }
+        return $response['url'];
     }
     
     /**
@@ -235,10 +235,10 @@ class HostedPages extends Record
         if ($redirect_url){
             $data['redirect_url'] = $redirect_url;
         }
-        $response = $this->request('POST', 'hostedpages/buyonetimeaddon', [
-            'content-type' => 'application/json',
-            'body' => json_encode($data),
-        ]);
-        $this->processResponseAndSave($response);
+        $response = $this->client->saveRecord('POST', 'hostedpages/buyonetimeaddon', $data);
+        if ($this->hasError()){
+            return false;
+        }
+        return $response['url'];
     }
 }

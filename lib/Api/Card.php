@@ -10,6 +10,18 @@ class Card extends Record
     protected $command = 'cards';
     protected $module = 'card';
     
+    public $card_id;
+    public $card_number;
+    public $cvv_number;
+    public $expiry_month;
+    public $expiry_year;
+    public $first_name;
+    public $last_name;
+    public $city;
+    public $state;
+    public $zip;
+    public $country;
+    
     protected $base_template = [
         'card_number',
         'cvv_number',
@@ -51,14 +63,12 @@ class Card extends Record
     
     /**
      * Delete an existing card.
-     * @param string $card_id
-     * @throws SubscriptionException
+     * @return bollean 
      */
-    public function delete($card_id = null)
+    public function delete()
     {
-        $card_id = empty($card_id) ? $this->getId() : $card_id;
-        $response = $this->request('DELETE', sprintf('customers/%s/cards/%s', $this['customer_id'], $card_id));
-        $this->processResponse($response);
+        $this->client->saveRecord('DELETE', sprintf('customers/%s/cards/%s', $this['customer_id'], $this->getId()));
+        return !$this->hasError();
     }
 
 }

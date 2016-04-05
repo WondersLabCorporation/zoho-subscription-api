@@ -102,4 +102,83 @@ class Customer extends Record
         }
         return null;
     }
+    
+    /**
+     * Create customer's card entity
+     * @param array $params
+     * @return Card
+     */
+    public function createCard($params)
+    {
+        $params['customer_id'] = $this->getId();
+        return Factory::createEntity('Card', $params, $this->client, false);
+    }
+    
+    /**
+     * Get customer's card entity from Zoho
+     * @param integer $card_id
+     * @return Card
+     */
+    public function getCard($card_id)
+    {
+        return Factory::getEntity('Card', ['customer_id' => $this->getId(), 'card_id' => $card_id], $this->client, false);
+    }
+    
+    /**
+     * Delete an existing card.
+     * @param integer $card_id
+     * @return boolean
+     */
+    public function deleteCard($card_id)
+    {
+        $entity = $this->createCard(['card_id' => $card_id]);
+        return $entity->delete();
+    }
+    
+    /**
+     * Create customer's contact person entity.
+     * @param array $params
+     * @return ContactPerson
+     */
+    public function createContactPerson($params)
+    {
+        $params['customer_id'] = $this->getId();
+        return Factory::createEntity('ContactPerson', $params, $this->client, false);
+    }
+    
+    /**
+     * Get customer's contact person entity from Zoho.
+     * @param integer $contactPerson_id
+     * @return ContactPerson
+     */
+    public function getContactPerson($contactPerson_id)
+    {
+        return Factory::getEntity('ContactPerson', ['customer_id' => $this->getId(), 'contactperson_id' => $contactPerson_id], $this->client, false);
+    }
+    
+    /**
+     * Delete an existing contact person.
+     * @param integer $contactPerson_id
+     * @return boolean
+     */
+    public function deleteContactPerson($contactPerson_id)
+    {
+        $entity = $this->createContactPerson(['contactperson_id' => $contactPerson_id]);
+        return $entity->delete();
+    }
+    
+    /**
+     * Get customer's contact persons list
+     * @return ContactPerson[]
+     */
+    public function getContactPersonsList()
+    {
+        $entities_data = $this->client->getList(sprintf('customers/%s/contactpersons', $this->getId()));
+        if ($this->hasError()) {
+            return null;
+        }
+        return Factory::getEntitiesFromArray($entities_data, 'ContactPerson', $this->client, false);
+    }
+    
+    
 }

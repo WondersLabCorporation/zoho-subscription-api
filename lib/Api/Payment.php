@@ -10,6 +10,16 @@ class Payment extends Record
     protected $command = 'payments';
     protected $module = 'payment';
     
+    public $customer_id;
+    public $payment_id;
+    public $amount;
+    public $date;
+    public $payment_mode;
+    public $description;
+    public $reference_number;
+    public $exchange_rate;
+    public $invoices;
+    
     protected $base_template = [
         'customer_id',
         'amount',
@@ -26,14 +36,12 @@ class Payment extends Record
     
     /**
      * Delete an existing payment.
-     * @param string $payment_id
-     * @throws SubscriptionException
+     * @return boolean
      */
-    public function delete($payment_id = null)
+    public function delete()
     {
-        $payment_id = empty($payment_id) ? $this->getId() : $payment_id;
-        $response = $this->request('DELETE', sprintf('plans/%s', $payment_id));
-        $this->processResponse($response);
+        $this->client->saveRecord('DELETE', sprintf('payments/%s', $this->getId()));
+        return !$this->hasError();
     }
 
 }

@@ -10,6 +10,12 @@ class ContactPerson extends Record
     protected $command = 'contactpersons';
     protected $module = 'contactperson';
     
+    public $contactperson_id;
+    public $first_name;
+    public $last_name;
+    public $email;
+    public $phone;
+
     protected $base_template = [
         'first_name',
         'last_name',
@@ -46,24 +52,11 @@ class ContactPerson extends Record
     
     /**
      * Delete an existing contact person.
-     * @param string $contactperson_id
-     * @throws SubscriptionException
+     * @return bollean
      */
-    public function delete($contactperson_id = null)
+    public function delete()
     {
-        $contactperson_id = empty($contactperson_id) ? $this->getId() : $contactperson_id;
-        $response = $this->request('DELETE', sprintf('customers/%s/contactpersons/%s', $this['customer_id'], $contactperson_id));
-        $this->processResponse($response);
-    }
-
-    /**
-     * Returns all contact persons as objects.
-     * 
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function getList() {
-        $result = parent::getList([], sprintf('customers/%s/contactpersons', $this['customer_id']));
-        return $this->buildEntitiesFromArray($result);
+        $this->client->saveRecord('DELETE', sprintf('customers/%s/contactpersons/%s', $this->customer_id, $this->getId()));
+        return !$this->hasError();
     }
 }

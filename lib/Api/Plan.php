@@ -3,6 +3,7 @@
 namespace Zoho\Subscription\Api;
 
 use Zoho\Subscription\Common\Record;
+use Zoho\Subscription\Common\Factory;
 
 /**
  * Plan.
@@ -76,30 +77,20 @@ class Plan extends Record
     ];
 
     /**
-     * Returns all plans as objects.
-     * 
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function getList() {
-        $result = parent::getList();
-        return $this->buildEntitiesFromArray($result);
-    }
-
-    /**
      * Get reccurent addons for given plan.
      *
-     * @return array
-     * @throws SubscriptionException
+     * @return Record[]|null
      */
     public function getAddons()
     {
-        $addonApi = new Addon($this->subscriptionsToken, $this->organizationId, $this->cache, $this->ttl);
-        $result = $addonApi->getList();
-        $addons = $this->buildEntitiesFromArray($result, 'Addon');
+        
+        $addons = Factory::getEntityList('Addon', [], $this->client, false);
+        if ($addons === null) {
+            return null;
+        }
         return array_filter($addons, function($addon){
-            foreach ($addon['plans'] as $plan){
-                if ($plan['plan_code'] == $this['plan_code']){
+            foreach ($addon->plans as $plan){
+                if ($plan['plan_code'] == $this->plan_code){
                     return true;
                 }
             }
@@ -109,47 +100,31 @@ class Plan extends Record
     
     /**
      * Delete an existing plan.
-     * @param string $plan_code
-     * @throws SubscriptionException
+     * @return bollean 
      */
-    public function delete($plan_code = null)
+    public function delete()
     {
-        if (empty($plan_code)){
-            $plan_code = $this['plan_code'];
-        }
-        $response = $this->request('DELETE', sprintf('plans/%s', $this->getId()));
-        $this->processResponse($response);
-    }
-    
-    /**
-     * List of all plans created for a particular product.
-     * @param integer $product_id
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function getListByProduct($product_id)
-    {
-        $result = parent::getList(['product_id' => $product_id]);
-        return $this->buildEntitiesFromArray($result);
+        $this->client->saveRecord('DELETE', sprintf('plans/%s', $this->getId()));
+        return !$this->hasError();
     }
 
     /**
      * Change the status of the plan to active.
-     * @throws SubscriptionException
+     * @return bollean 
      */
     public function markActive()
     {
-        $response = $this->request('POST', sprintf('plans/%s/markasactive', $this->getId()));
-        $this->processResponse($response);
+        $this->client->saveRecord('POST', sprintf('plans/%s/markasactive', $this->getId()));
+        return !$this->hasError();
     }
     
     /**
      * Change the status of the plan to inactive.
-     * @throws SubscriptionException
+     * @return bollean 
      */
     public function markInactive()
     {
-        $response = $this->request('POST', sprintf('plans/%s/markasinactive', $this->getId()));
-        $this->processResponse($response);
+        $this->client->saveRecord('POST', sprintf('plans/%s/markasinactive', $this->getId()));
+        return !$this->hasError();
     }
 }

@@ -139,6 +139,7 @@ class Client
     
     public function saveRecord($method, $command, $data = [])
     {
+        $this->error = null;
         $response = $this->request($method, $command, [
             'content-type' => 'application/json',
             'body' => json_encode($data),
@@ -156,6 +157,7 @@ class Client
      */
     public function getRecord($command, array $query = [], $page = null)
     {
+        $this->error = null;
         $cacheKey = sprintf('zoho_%s_%s_%s', $command, implode('', array_keys($query)), $page);
         
         $hit = $this->getFromCache($cacheKey);

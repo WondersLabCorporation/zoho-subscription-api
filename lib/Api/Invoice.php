@@ -16,114 +16,90 @@ class Invoice extends Record
     protected $module = 'invoice';
     protected $base_template = null;
     
-     /**
-     * Returns all Invoices as objects.
-     * 
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function getList() {
-        $result = parent::getList();
-        return $this->buildEntitiesFromArray($result);
-    }
+    public $invoice_id;
+    public $number;
+    public $status;
+    public $invoice_date;
+    public $due_date;
+    public $customer_id;
+    public $customer_name;
+    public $email;
+    public $invoice_items;
+    public $coupons;
+    public $total;
+    public $payment_made;
+    public $credits_applied;
+    public $write_off_amount;
+    public $payments;
+    public $currency_code;
+    public $currency_symbol;
+    public $from_mail_id;
+    public $to_mail_ids;
+    public $cc_mail_ids;
+    public $subject;
+    public $body;
     
-    
-     /**
-     * Returns all Invoices as objects by customer_id.
-     * 
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function listByCustomer($customer_id)
-    {
-        $result = parent::getList(['customer_id' => $customer_id]);
-        return $this->buildEntitiesFromArray($result);
-    }
 
     /**
      * @param string $invoiceId The invoice's id
-     *
-     * @throws \Exception
-     *
      * @return array
      */
-    public function getInvoicePdf($invoiceId)
+    public function getInvoicePdf()
     {
-        $response = $this->client->request('GET', sprintf('invoices/%s', $invoiceId), [
+        $response = $this->client->getRecord(sprintf('invoices/%s', $this->getId()), [
             'query' => ['accept' => 'pdf'],
         ]);
-
         return $response;
     }
     
     /**
      * Charge a customer for an invoice.
-     * @param integer $invoice_id
-     * @throws SubscriptionException
+     * @return boolean
      */
-    public function collect($invoice_id = null)
+    public function collect()
     {
-        $invoice_id = empty($invoice_id) ? $this->getId() : $invoice_id;
-        $response = $this->request('POST', sprintf('invoices/%s/collect', $invoice_id), [
-            'content-type' => 'application/json',
-        ]);
-        $this->processResponse($response);
+        $response = $this->client->saveRecord('POST', sprintf('invoices/%s/collect', $this->getId()));
+        return $this->processResponse($response);
     }
     
     /**
      * Making an invoice void.
-     * @param integer $invoice_id
-     * @throws SubscriptionException
+     * @return boolean
      */
-    public function convertVoid($invoice_id = null)
+    public function convertVoid()
     {
-        $invoice_id = empty($invoice_id) ? $this->getId() : $invoice_id;
-        $response = $this->request('POST', sprintf('invoices/%s/void', $invoice_id), [
-            'content-type' => 'application/json',
-        ]);
-        $this->processResponse($response);
+        $response = $this->client->saveRecord('POST', sprintf('invoices/%s/void', $this->getId()));
+        return $this->processResponse($response);
     }
     
     /**
      * Change the status of the invoice to open.
-     * @param integer $invoice_id
-     * @throws SubscriptionException
+     * @return boolean
      */
-    public function convertOpen($invoice_id = null)
+    public function convertOpen()
     {
-        $invoice_id = empty($invoice_id) ? $this->getId() : $invoice_id;
-        $response = $this->request('POST', sprintf('invoices/%s/convertoopen', $invoice_id), [
-            'content-type' => 'application/json',
-        ]);
-        $this->processResponse($response);
+        $response = $this->request('POST', sprintf('invoices/%s/convertoopen', $this->getId()));
+        return $this->processResponse($response);
     }
     
     /**
      * Write off a payment.
-     * @param integer $invoice_id
-     * @throws SubscriptionException
+     * @return boolean
      */
-    public function writeOff($invoice_id = null)
+    public function writeOff()
     {
-        $invoice_id = empty($invoice_id) ? $this->getId() : $invoice_id;
-        $response = $this->request('POST', sprintf('invoices/%s/writeoff', $invoice_id), [
-            'content-type' => 'application/json',
-        ]);
-        $this->processResponse($response);
+        $response = $this->client->saveRecord('POST', sprintf('invoices/%s/writeoff', $this->getId()));
+        return $this->processResponse($response);
     }
     
     /**
      * Revert write off performed for a payment
-     * @param integer $invoice_id
-     * @throws SubscriptionException
+     * @return boolean
      */
     public function cancelWriteOff($invoice_id = null)
     {
-        $invoice_id = empty($invoice_id) ? $this->getId() : $invoice_id;
-        $response = $this->request('POST', sprintf('invoices/%s/cancelwriteoff', $invoice_id), [
-            'content-type' => 'application/json',
-        ]);
-        $this->processResponse($response);
+        $response = $this->client->saveRecord('POST', sprintf('invoices/%s/cancelwriteoff', $this->getId()));
+        return $this->processResponse($response);
     }
     
     /**
@@ -141,9 +117,9 @@ class Invoice extends Record
      * @param string $body 
      * Invoice Id
      * @param integer $invoice_id
-     * @throws SubscriptionException
+     * @return boolean
      */
-    public function emailInvoice($from_mail_id, array $to_mail_ids, array $cc_mail_ids, $subject, $body, $invoice_id = null)
+    public function emailInvoice($from_mail_id, array $to_mail_ids, array $cc_mail_ids, $subject, $body)
     {
         $request = [];
         $request['from_mail_id'] = $from_mail_id;
@@ -151,11 +127,7 @@ class Invoice extends Record
         $request['cc_mail_ids'] = $cc_mail_ids;
         $request['subject'] = $subject;
         $request['body'] = $body;
-        $invoice_id = empty($invoice_id) ? $this->getId() : $invoice_id;
-        $response = $this->request('POST', sprintf('invoices/%s/email', $invoice_id), [
-            'content-type' => 'application/json',
-            'body' => $request,
-        ]);
-        $this->processResponse($response);
+        $response = $this->client->saveRecord('POST', sprintf('invoices/%s/email', $this->getId()), $request);
+        return $this->processResponse($response);
     }
 }

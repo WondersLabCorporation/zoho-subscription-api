@@ -17,14 +17,28 @@ class Addon extends Record
     protected $command = 'addons';
     protected $module = 'addon';
     
+    public $plans;
+    public $name;
+    public $unit_name;
+    public $pricing_scheme;
+    public $price_brackets;
+    public $type;
+    public $interval_unit;
+    public $applicable_to_all_plans;
+    public $description;
+    public $tax_id;
+    public $addon_code;
+    public $product_id;
+
+
     protected function getId()
     {
-        return $this['addon_code'];
+        return $this->addon_code;
     }
     
     protected function setId($id)
     {
-        $this['addon_code'] = $id;
+        $this->addon_code = $id;
     }
     
     protected $base_template = [
@@ -59,79 +73,33 @@ class Addon extends Record
     }
     
     /**
-     * Returns all addons as objects.
-     * 
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function getList() {
-        $result = parent::getList();
-        return $this->buildEntitiesFromArray($result);
-    }
-    
-    /**
-     * @param array $filters associative array of filters
-     *
-     * @throws \Exception
-     *
-     * @return array
-     */
-    public function listAddons($filters = [])
-    {
-        $cacheKey = 'addons';
-        $hit = $this->getFromCache($cacheKey);
-
-        if (false === $hit) {
-            $response = $this->client->request('GET', $cacheKey);
-
-            $addons = $this->processResponse($response);
-            $hit = $addons['addons'];
-
-            $this->saveToCache($cacheKey, $hit);
-        }
-
-        foreach ($filters as $key => $filter) {
-            if (array_key_exists($key, current($hit))) {
-                $hit = array_filter($hit, function ($element) use ($key, $filter) {
-                    return $element[$key] == $filter;
-                });
-            }
-        }
-
-        return $hit;
-    }
-    
-    /**
      * Delete an existing addon.
-     * @param string $addon_code
-     * @throws SubscriptionException
+     * @return bollean 
+     * 
      */
-    public function delete($addon_code = null)
+    public function delete()
     {
-        if (empty($addon_code)){
-            $addon_code = $this['addon_code'];
-        }
-        $response = $this->request('DELETE', sprintf('addons/%s', $this->getId()));
-        $this->processResponse($response);
+        $this->client->saveRecord('DELETE', sprintf('addons/%s', $this->getId()));
+        return !$this->hasError();
     }
 
     /**
      * Change the status of the addon to active.
-     * @throws SubscriptionException
+     * @return bollean 
      */
     public function markActive()
     {
-        $response = $this->request('POST', sprintf('addons/%s/markasactive', $this->getId()));
-        $this->processResponse($response);
+        $this->client->saveRecord('POST', sprintf('addons/%s/markasactive', $this->getId()));
+        return !$this->hasError();
     }
     
     /**
      * Change the status of the addon to inactive.
-     * @throws SubscriptionException
+     * @return bollean 
      */
     public function markInactive()
     {
-        $response = $this->request('POST', sprintf('addons/%s/markasinactive', $this->getId()));
-        $this->processResponse($response);
+        $this->client->saveRecord('POST', sprintf('addons/%s/markasinactive', $this->getId()));
+        return !$this->hasError();
     }
 }
