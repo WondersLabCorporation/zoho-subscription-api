@@ -3,6 +3,7 @@
 namespace Zoho\Subscription\Api;
 
 use Zoho\Subscription\Common\Record;
+use Zoho\Subscription\Common\Factory;
 
 /**
  * @author Hang Pham <thi@yproximite.com>
@@ -67,54 +68,38 @@ class Customer extends Record
     
     /**
      * Delete an existing customer.
-     * @param integer $customer_id
-     * @throws SubscriptionException
      */
-    public function delete($customer_id = null)
+    public function delete()
     {
-        if (empty($customer_id)){
-            $customer_id = $this['customer_id'];
-        }
-        $response = $this->request('DELETE', sprintf('customers/%s', $this->getId()));
-        $this->processResponse($response);
+        $this->saveRecord('DELETE', sprintf('customers/%s', $this->getId()));
+        return !$this->hasError();
     }
     
     /**
-     * Returns all customers as objects.
-     * 
-     * @return array
+     * Get all subscriptions of customer
+     * @return Record[]
      * @throws SubscriptionException
      */
-    public function getList() {
-        $result = parent::getList();
-        return $this->buildEntitiesFromArray($result);
+    public function getSubscriptions()
+    {
+        return Factory::getEntityList('Subscription', ['query' => ['customer_id' => $this->getId()]], $this->client, false);
     }
     
     /**
-     * @param string $customer_email The customer's email
-     *
-     * @return array
-     * @throws SubscriptionException
+     * Get subscriptions of customer by reference_id
+     * @param string $reference_id
+     * @return Record|null
      */
-    public function getListByEmail($customer_email)
+    public function getSubscriptionByReference($reference_id)
     {
-        if (empty($customer_email)){
-            $customer_email = $this['email'];
+        $subscriptions = $this->getSubscriptions();
+        if ($subscriptions !== null) {
+            foreach ($subscriptions as $subscription) {
+                if ($subscription->reference_id == $reference_id) {
+                    return $subscription;
+                }
+            }
         }
-        $result = parent::getList(['email' => $customer_email]);
-        return $this->buildEntitiesFromArray($result);
-    }
-
-    /**
-     * @param string $customer_email
-     *
-     * @return array
-     * @throws SubscriptionException
-     */
-    public function getByEmail($customer_email)
-    {
-        $customers = $this->getListByEmail($customer_email);
-
-        return $this->load($customers[0]['customer_id']);
+        return null;
     }
 }
