@@ -30,6 +30,7 @@ class HostedPages extends Record
     public $subscription_id;
     public $url;
     public $contactpersons;
+    public $hostedpage_id;
     
     protected function getUpdateMethod()
     {
